@@ -1,3 +1,144 @@
+# Patient Assessment Frontend
+
+React frontend for a clinical workflow where users can:
+
+- Register/login
+- Create and view patients
+- Create clinical assessments for patients
+- View assessment reports
+
+## Tech Stack
+
+- React 18 (Create React App)
+- React Router
+- Axios
+- `react-hot-toast`
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js (LTS recommended)
+- npm
+
+### Install
+
+```bash
+npm install
+```
+
+### Run (development)
+
+```bash
+npm start
+```
+
+The app runs at http://localhost:3000 by default.
+
+### Build (production)
+
+```bash
+npm run build
+```
+
+## App Routes (high level)
+
+- `/login` – login screen
+- `/register` – registration screen
+- `/patients` – patient list
+- `/patients/new` – create patient
+- `/patients/:id` – patient details
+- `/assessments/new` – create assessment (supports `?patientId=...`)
+- `/assessments/:id/report` – assessment report
+
+## Authentication
+
+- On login, the app stores a JWT token in `localStorage` under `token`.
+- Requests automatically include `Authorization: Bearer <token>` (see [src/services/api.js](src/services/api.js)).
+- If the backend returns `401`, the app clears auth state and redirects to `/login`.
+
+## Backend API
+
+The frontend is configured to call:
+
+- `https://patientreport123.runasp.net/api`
+
+You can change the base URL in [src/services/api.js](src/services/api.js).
+
+### Endpoints Used
+
+- Auth
+	- `POST /Auth/register`
+	- `POST /Auth/login`
+	- `POST /Auth/logout`
+- Patients
+	- `GET /Patients`
+	- `GET /Patients/{id}`
+	- `POST /Patients`
+- Assessments
+	- `POST /Assessments`
+	- `GET /Assessments/{id}/report`
+
+### API Payload Contracts
+
+Patient create payload (frontend matches this shape):
+
+```json
+{
+	"firstName": "string",
+	"lastName": "string",
+	"dateOfBirth": "2026-03-28T20:36:43.782Z",
+	"gender": "string",
+	"phoneNumber": "string",
+	"address": "string"
+}
+```
+
+Assessment create payload is a flat DTO (the UI collects these fields):
+
+```json
+{
+	"patientId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+	"nurseNotes": "string",
+	"bloodPressure": "string",
+	"pulseRate": 0,
+	"respiratoryRate": 0,
+	"spO2": 0,
+	"temperature": 0,
+	"oxygenGiven": true,
+	"ivStarted": true,
+	"cprPerformed": true,
+	"isAlert": true,
+	"isOriented": true,
+	"skinWarm": true,
+	"skinDry": true,
+	"skinPale": true,
+	"skinCool": true,
+	"skinHot": true,
+	"skinFlushed": true,
+	"skinCyanotic": true,
+	"skinClammy": true,
+	"skinJaundice": true,
+	"skinDiaphoretic": true,
+	"respiratorySymmetrical": true,
+	"respiratoryAsymmetrical": true,
+	"lungSounds": "string",
+	"oxygenSaturation": 0,
+	"gaitSteady": true,
+	"usesCane": true,
+	"usesCrutches": true,
+	"usesWheelchair": true,
+	"bedridden": true,
+	"requiresAssistance": true
+}
+```
+
+## Project Structure
+
+- UI components live under `src/components/`
+- API clients live under `src/services/`
+- Auth state is managed in `src/contexts/AuthContext.jsx`
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
