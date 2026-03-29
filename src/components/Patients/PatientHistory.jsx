@@ -41,6 +41,8 @@ const PatientHistory = () => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState(null);
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
 
   useEffect(() => {
     // Avoid import-time DOM side effects (helps tests and HMR)
@@ -104,6 +106,26 @@ const PatientHistory = () => {
         return bt - at;
       });
   }, [assessments]);
+
+  const filteredRows = useMemo(() => {
+    const from = String(filterFromDate || '').trim();
+    const to = String(filterToDate || '').trim();
+
+    if (!from && !to) return rows;
+
+    const start = from || to;
+    const end = to || from;
+    if (!start || !end) return rows;
+
+    const rangeStart = start <= end ? start : end;
+    const rangeEnd = start <= end ? end : start;
+
+    return (rows || []).filter((r) => {
+      const key = r?.dateKey;
+      if (!key || key === 'unknown') return false;
+      return key >= rangeStart && key <= rangeEnd;
+    });
+  }, [filterFromDate, filterToDate, rows]);
 
   const getVitalsSummary = (assessment) => {
     const v = assessment?.vitals || assessment?.vitalSigns || null;
@@ -203,12 +225,6 @@ const PatientHistory = () => {
         <button onClick={() => navigate('/patients')} style={styles.backButton}>
           ← Back to Patients
         </button>
-        <button
-          onClick={() => navigate(`/assessments/new/form?patientId=${id}`)}
-          style={styles.newAssessmentButton}
-        >
-          + New Assessment
-        </button>
       </div>
 
       <div style={styles.patientCard}>
@@ -229,11 +245,45 @@ const PatientHistory = () => {
       <div style={styles.historySection}>
         <div style={styles.sectionHeaderRow}>
           <h3 style={styles.sectionTitle}>Assessment History</h3>
+          <div style={styles.filterControls}>
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel} htmlFor="historyFromDate">From</label>
+              <input
+                id="historyFromDate"
+                type="date"
+                value={filterFromDate}
+                onChange={(e) => setFilterFromDate(e.target.value)}
+                style={styles.filterInput}
+              />
+            </div>
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel} htmlFor="historyToDate">To</label>
+              <input
+                id="historyToDate"
+                type="date"
+                value={filterToDate}
+                onChange={(e) => setFilterToDate(e.target.value)}
+                style={styles.filterInput}
+              />
+            </div>
+            <button
+              type="button"
+              style={styles.clearFilterButton}
+              onClick={() => {
+                setFilterFromDate('');
+                setFilterToDate('');
+              }}
+              disabled={!filterFromDate && !filterToDate}
+              aria-disabled={!filterFromDate && !filterToDate}
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
-        {rows.length === 0 ? (
+        {filteredRows.length === 0 ? (
           <div style={styles.emptyState}>
-            <p>No assessments found.</p>
+            <p>No assessments found for that date/range.</p>
           </div>
         ) : (
           <div style={styles.tableContainer}>
@@ -248,7 +298,7 @@ const PatientHistory = () => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ dateKey, assessment }) => {
+                {filteredRows.map(({ dateKey, assessment }) => {
                   const assessmentId = assessment?.assessmentId || assessment?.id;
                   const saved = hasSavedReport(assessment);
                   return (
@@ -299,7 +349,7 @@ const styles = {
     maxWidth: '1400px',
     margin: '0 auto',
     padding: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: 'transparent',
     minHeight: 'calc(100vh - 70px)',
   },
   header: {
@@ -319,18 +369,6 @@ const styles = {
     borderRadius: '8px',
     backdropFilter: 'blur(10px)',
     transition: 'all 0.3s ease',
-  },
-  newAssessmentButton: {
-    padding: '0.75rem 1.5rem',
-    background: 'linear-gradient(135deg, #27ae60, #2ecc71)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: '500',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
   },
   patientCard: {
     background: 'white',
@@ -362,6 +400,42 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: '1rem',
+    gap: '1rem',
+    flexWrap: 'wrap',
+  },
+  filterControls: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
+  },
+  filterGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+  },
+  filterLabel: {
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    color: '#2c3e50',
+  },
+  filterInput: {
+    padding: '0.5rem 0.75rem',
+    borderRadius: '10px',
+    border: '1px solid #e0e0e0',
+    backgroundColor: 'white',
+    color: '#2c3e50',
+    fontSize: '0.9rem',
+    minWidth: '170px',
+  },
+  clearFilterButton: {
+    padding: '0.55rem 0.9rem',
+    backgroundColor: 'transparent',
+    border: '1px solid #667eea',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontWeight: 700,
+    color: '#667eea',
   },
   sectionTitle: {
     margin: 0,

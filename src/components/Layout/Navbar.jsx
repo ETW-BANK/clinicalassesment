@@ -36,9 +36,6 @@ const Navbar = () => {
               <Link to="/patients" className="navbar-link" onClick={() => setIsMenuOpen(false)}>
                 <span>👥</span> Patients
               </Link>
-              <Link to="/assessments/new" className="navbar-link" onClick={() => setIsMenuOpen(false)}>
-                <span>📝</span> New Assessment
-              </Link>
               <div className="navbar-user-menu">
                 <span className="navbar-user-info">
                   <span>👤</span> {user?.name || user?.email}
@@ -63,7 +60,7 @@ const Navbar = () => {
 
       <style>{`
         .navbar {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--secondary-color);
           color: white;
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           position: sticky;
@@ -194,7 +191,7 @@ const Navbar = () => {
             top: 100%;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--secondary-color);
             flex-direction: column;
             padding: 1rem 2rem;
             gap: 0.75rem;

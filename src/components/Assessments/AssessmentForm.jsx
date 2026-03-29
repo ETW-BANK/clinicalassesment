@@ -184,6 +184,11 @@ const AssessmentForm = ({ patientId, onSuccess, onCancel }) => {
       { id: 'skin', title: 'Skin Conditions', icon: <SkinIcon /> },
       { id: 'respiratory', title: 'Respiratory Assessment', icon: <RespiratoryIcon /> },
       { id: 'musculoskeletal', title: 'Mobility Assessment', icon: <MobilityIcon /> },
+      { id: 'gastrointestinal', title: 'Gastrointestinal Assessment', icon: <InterventionsIcon /> },
+      { id: 'genitourinary', title: 'Genitourinary Assessment', icon: <InterventionsIcon /> },
+      { id: 'painDetails', title: 'Pain Details', icon: <InterventionsIcon /> },
+      { id: 'diagnoses', title: 'Diagnoses', icon: <NotesIcon /> },
+      { id: 'hospiceEligibility', title: 'Hospice Eligibility', icon: <NeuroIcon /> },
       { id: 'nurseNotes', title: 'Nurse Notes', icon: <NotesIcon /> },
     ],
     []
@@ -245,7 +250,45 @@ const AssessmentForm = ({ patientId, onSuccess, onCancel }) => {
     bedridden: false,
     requiresAssistance: false,
     otherMobilityStatus: '',
-    otherAssistiveDevice: ''
+    otherAssistiveDevice: '',
+
+    // Gastrointestinal
+    diet: '',
+    appetite: '',
+    bowelSounds: '',
+    lastBowelMovement: '',
+    abdomen: '',
+    gastrointestinalComments: '',
+
+    // Genitourinary
+    urineAppearance: '',
+    continence: '',
+    catheter: false,
+    lastVoid: '',
+    genitourinaryComments: '',
+
+    // Pain details
+    painLocation: '',
+    painDuration: '',
+    painIntervention: '',
+    painEffectiveness: '',
+    painComments: '',
+
+    // Diagnoses
+    diagnoses: [],
+
+    // Hospice eligibility (optional)
+    hospicePrognosisSixMonthsOrLess: false,
+    hospiceHospitalizationsLast30Days: '',
+    hospiceFunctionalDecline: false,
+    hospicePhysicalDecline: false,
+    hospiceCognitiveDecline: false,
+    hospiceRapidWeightLossKgLastMonth: '',
+    hospiceDysphagia: false,
+    hospicePersistentSymptomsDespiteTreatment: false,
+    hospiceIncreasedLethargy: false,
+    hospiceDisorientation: false,
+    hospiceNotes: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -256,6 +299,57 @@ const AssessmentForm = ({ patientId, onSuccess, onCancel }) => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+  };
+
+  const diagnosisCategories = useMemo(
+    () => [
+      'Cancer',
+      'Dementia',
+      'HeartDisease',
+      'LungDisease',
+      'Stroke',
+      'RenalFailure',
+      'LiverDisease',
+      'ALS',
+      'NeurologicalDisease',
+      'Other',
+    ],
+    []
+  );
+
+  const addDiagnosis = () => {
+    setFormData((prev) => ({
+      ...prev,
+      diagnoses: [
+        ...(Array.isArray(prev.diagnoses) ? prev.diagnoses : []),
+        { category: '', description: '', icd10Code: '', isPrimary: false },
+      ],
+    }));
+  };
+
+  const removeDiagnosis = (indexToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      diagnoses: (Array.isArray(prev.diagnoses) ? prev.diagnoses : []).filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const updateDiagnosis = (indexToUpdate, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      diagnoses: (Array.isArray(prev.diagnoses) ? prev.diagnoses : []).map((d, idx) => {
+        if (idx !== indexToUpdate) return d;
+        return { ...d, [field]: value };
+      }),
+    }));
+  };
+
+  const toIsoStringOrNull = (value) => {
+    const v = String(value || '').trim();
+    if (!v) return null;
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
   };
 
   const handleSubmit = async (e) => {
@@ -269,15 +363,82 @@ const AssessmentForm = ({ patientId, onSuccess, onCancel }) => {
     setIsSubmitting(true);
     
     try {
-      // Convert string numbers to actual numbers
+      const diagnoses = Array.isArray(formData.diagnoses) ? formData.diagnoses : [];
+      const trimmedDiagnoses = diagnoses
+        .map((d) => ({
+          category: String(d?.category || '').trim(),
+          description: String(d?.description || '').trim(),
+          icd10Code: String(d?.icd10Code || '').trim(),
+          isPrimary: Boolean(d?.isPrimary),
+        }))
+        .filter((d) => d.category || d.description || d.icd10Code || d.isPrimary);
+
+      const invalidDiagnosis = trimmedDiagnoses.find((d) => !d.category || !d.description);
+      if (invalidDiagnosis) {
+        alert('Please complete diagnosis Category and Description (or remove the empty diagnosis row).');
+        return;
+      }
+
+      const hospiceEligibilityHasAnyValue =
+        Boolean(formData.hospicePrognosisSixMonthsOrLess) ||
+        String(formData.hospiceHospitalizationsLast30Days || '').trim() !== '' ||
+        Boolean(formData.hospiceFunctionalDecline) ||
+        Boolean(formData.hospicePhysicalDecline) ||
+        Boolean(formData.hospiceCognitiveDecline) ||
+        String(formData.hospiceRapidWeightLossKgLastMonth || '').trim() !== '' ||
+        Boolean(formData.hospiceDysphagia) ||
+        Boolean(formData.hospicePersistentSymptomsDespiteTreatment) ||
+        Boolean(formData.hospiceIncreasedLethargy) ||
+        Boolean(formData.hospiceDisorientation) ||
+        String(formData.hospiceNotes || '').trim() !== '';
+
+      const hospiceEligibility = hospiceEligibilityHasAnyValue
+        ? {
+            prognosisSixMonthsOrLess: formData.hospicePrognosisSixMonthsOrLess ? true : null,
+            hospitalizationsLast30Days: formData.hospiceHospitalizationsLast30Days
+              ? parseInt(formData.hospiceHospitalizationsLast30Days, 10)
+              : null,
+            functionalDecline: formData.hospiceFunctionalDecline ? true : null,
+            physicalDecline: formData.hospicePhysicalDecline ? true : null,
+            cognitiveDecline: formData.hospiceCognitiveDecline ? true : null,
+            rapidWeightLossKgLastMonth: formData.hospiceRapidWeightLossKgLastMonth
+              ? parseFloat(formData.hospiceRapidWeightLossKgLastMonth)
+              : null,
+            dysphagia: formData.hospiceDysphagia ? true : null,
+            persistentSymptomsDespiteTreatment: formData.hospicePersistentSymptomsDespiteTreatment ? true : null,
+            increasedLethargy: formData.hospiceIncreasedLethargy ? true : null,
+            disorientation: formData.hospiceDisorientation ? true : null,
+            notes: String(formData.hospiceNotes || '').trim() || null,
+          }
+        : null;
+
+      // Convert string numbers to actual numbers + build new objects
       const dataToSubmit = {
         ...formData,
-        pulseRate: formData.pulseRate ? parseInt(formData.pulseRate) : null,
-        respiratoryRate: formData.respiratoryRate ? parseInt(formData.respiratoryRate) : null,
-        spO2: formData.spO2 ? parseInt(formData.spO2) : null,
+        pulseRate: formData.pulseRate ? parseInt(formData.pulseRate, 10) : null,
+        respiratoryRate: formData.respiratoryRate ? parseInt(formData.respiratoryRate, 10) : null,
+        spO2: formData.spO2 ? parseInt(formData.spO2, 10) : null,
         temperature: formData.temperature ? parseFloat(formData.temperature) : null,
         oxygenLitersPerMinute: formData.oxygenLitersPerMinute ? parseFloat(formData.oxygenLitersPerMinute) : null,
-        painScore: formData.painScore ? parseInt(formData.painScore) : null,
+        painScore: formData.painScore ? parseInt(formData.painScore, 10) : null,
+
+        // datetime-local to ISO
+        lastBowelMovement: toIsoStringOrNull(formData.lastBowelMovement),
+        lastVoid: toIsoStringOrNull(formData.lastVoid),
+
+        // optional boolean|null
+        catheter: formData.catheter ? true : null,
+
+        // NEW optional fields
+        diagnoses: trimmedDiagnoses.length
+          ? trimmedDiagnoses.map((d) => ({
+              category: d.category,
+              description: d.description,
+              icd10Code: d.icd10Code ? d.icd10Code : null,
+              isPrimary: d.isPrimary,
+            }))
+          : null,
+        hospiceEligibility,
       };
       
       const result = await assessmentService.createAssessment(dataToSubmit);
@@ -663,6 +824,398 @@ const AssessmentForm = ({ patientId, onSuccess, onCancel }) => {
               value={formData.otherAssistiveDevice}
               onChange={handleChange}
               placeholder="Describe other assistive device"
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Gastrointestinal Section */}
+      {currentStep?.id === 'gastrointestinal' && (
+        <section className="assessmentFormSection">
+          <div className="assessmentFormGrid">
+            <div className="form-group">
+              <label className="form-label">Diet</label>
+              <select name="diet" value={formData.diet} onChange={handleChange}>
+                <option value="">Select Diet</option>
+                <option value="Regular">Regular</option>
+                <option value="NPO">NPO</option>
+                <option value="TubeFeeding">Tube Feeding</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Appetite</label>
+              <select name="appetite" value={formData.appetite} onChange={handleChange}>
+                <option value="">Select Appetite</option>
+                <option value="Good">Good</option>
+                <option value="Fair">Fair</option>
+                <option value="Poor">Poor</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Bowel Sounds</label>
+              <input
+                type="text"
+                name="bowelSounds"
+                value={formData.bowelSounds}
+                onChange={handleChange}
+                placeholder="e.g., Present/Absent/Hyperactive"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Last Bowel Movement</label>
+              <input
+                type="datetime-local"
+                name="lastBowelMovement"
+                value={formData.lastBowelMovement}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Abdomen</label>
+              <input
+                type="text"
+                name="abdomen"
+                value={formData.abdomen}
+                onChange={handleChange}
+                placeholder="e.g., Soft/Distended/Tender"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Gastrointestinal Comments</label>
+            <textarea
+              name="gastrointestinalComments"
+              value={formData.gastrointestinalComments}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Additional GI notes..."
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Genitourinary Section */}
+      {currentStep?.id === 'genitourinary' && (
+        <section className="assessmentFormSection">
+          <div className="assessmentFormGrid">
+            <div className="form-group">
+              <label className="form-label">Urine Appearance</label>
+              <select name="urineAppearance" value={formData.urineAppearance} onChange={handleChange}>
+                <option value="">Select Appearance</option>
+                <option value="Clear">Clear</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Amber">Amber</option>
+                <option value="Brown">Brown</option>
+                <option value="Cloudy">Cloudy</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Continence</label>
+              <select name="continence" value={formData.continence} onChange={handleChange}>
+                <option value="">Select Continence</option>
+                <option value="Continent">Continent</option>
+                <option value="Incontinent">Incontinent</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Last Void</label>
+              <input type="datetime-local" name="lastVoid" value={formData.lastVoid} onChange={handleChange} />
+            </div>
+
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input type="checkbox" name="catheter" checked={formData.catheter} onChange={handleChange} />
+                Catheter present
+              </label>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Genitourinary Comments</label>
+            <textarea
+              name="genitourinaryComments"
+              value={formData.genitourinaryComments}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Additional GU notes..."
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Pain Details */}
+      {currentStep?.id === 'painDetails' && (
+        <section className="assessmentFormSection">
+          <div className="assessmentFormGrid">
+            <div className="form-group">
+              <label className="form-label">Pain Location</label>
+              <input
+                type="text"
+                name="painLocation"
+                value={formData.painLocation}
+                onChange={handleChange}
+                placeholder="e.g., Lower back"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Pain Duration</label>
+              <input
+                type="text"
+                name="painDuration"
+                value={formData.painDuration}
+                onChange={handleChange}
+                placeholder="e.g., 2 days"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Intervention</label>
+              <input
+                type="text"
+                name="painIntervention"
+                value={formData.painIntervention}
+                onChange={handleChange}
+                placeholder="e.g., Repositioned / Medication"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Effectiveness</label>
+              <input
+                type="text"
+                name="painEffectiveness"
+                value={formData.painEffectiveness}
+                onChange={handleChange}
+                placeholder="e.g., Improved"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Pain Comments</label>
+            <textarea
+              name="painComments"
+              value={formData.painComments}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Additional pain notes..."
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Diagnoses */}
+      {currentStep?.id === 'diagnoses' && (
+        <section className="assessmentFormSection">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, color: 'var(--gray-color)', fontSize: '0.9rem' }}>
+              Optional. Add one or more hospice-related diagnoses.
+            </p>
+            <button type="button" className="btn-primary" onClick={addDiagnosis}>
+              + Add diagnosis
+            </button>
+          </div>
+
+          {(Array.isArray(formData.diagnoses) ? formData.diagnoses : []).length === 0 ? (
+            <div style={{ paddingTop: 'var(--spacing-md)', color: '#2c3e50' }}>
+              No diagnoses added.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)', paddingTop: 'var(--spacing-md)' }}>
+              {(formData.diagnoses || []).map((d, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-xl)',
+                    padding: 'var(--spacing-lg)',
+                    background: 'var(--white-color)',
+                  }}
+                >
+                  <div className="assessmentFormGrid">
+                    <div className="form-group">
+                      <label className="form-label">Category</label>
+                      <select
+                        value={d?.category || ''}
+                        onChange={(e) => updateDiagnosis(idx, 'category', e.target.value)}
+                      >
+                        <option value="">Select Category</option>
+                        {diagnosisCategories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Description</label>
+                      <input
+                        type="text"
+                        value={d?.description || ''}
+                        onChange={(e) => updateDiagnosis(idx, 'description', e.target.value)}
+                        placeholder="Diagnosis description"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">ICD-10 Code (optional)</label>
+                      <input
+                        type="text"
+                        value={d?.icd10Code || ''}
+                        onChange={(e) => updateDiagnosis(idx, 'icd10Code', e.target.value)}
+                        placeholder="e.g., C34.90"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(d?.isPrimary)}
+                          onChange={(e) => updateDiagnosis(idx, 'isPrimary', e.target.checked)}
+                        />
+                        Primary
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--spacing-sm)' }}>
+                    <button type="button" className="assessmentBtnCancel" onClick={() => removeDiagnosis(idx)}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Hospice Eligibility */}
+      {currentStep?.id === 'hospiceEligibility' && (
+        <section className="assessmentFormSection">
+          <p style={{ marginTop: 0, color: 'var(--gray-color)', fontSize: '0.9rem' }}>
+            Optional. Check items that apply and add notes as needed.
+          </p>
+
+          <div className="assessmentCheckboxGrid">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospicePrognosisSixMonthsOrLess"
+                checked={formData.hospicePrognosisSixMonthsOrLess}
+                onChange={handleChange}
+              />
+              Prognosis ≤ 6 months
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospiceFunctionalDecline"
+                checked={formData.hospiceFunctionalDecline}
+                onChange={handleChange}
+              />
+              Functional decline
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospicePhysicalDecline"
+                checked={formData.hospicePhysicalDecline}
+                onChange={handleChange}
+              />
+              Physical decline
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospiceCognitiveDecline"
+                checked={formData.hospiceCognitiveDecline}
+                onChange={handleChange}
+              />
+              Cognitive decline
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospiceDysphagia"
+                checked={formData.hospiceDysphagia}
+                onChange={handleChange}
+              />
+              Dysphagia
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospicePersistentSymptomsDespiteTreatment"
+                checked={formData.hospicePersistentSymptomsDespiteTreatment}
+                onChange={handleChange}
+              />
+              Persistent symptoms despite treatment
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospiceIncreasedLethargy"
+                checked={formData.hospiceIncreasedLethargy}
+                onChange={handleChange}
+              />
+              Increased lethargy
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="hospiceDisorientation"
+                checked={formData.hospiceDisorientation}
+                onChange={handleChange}
+              />
+              Disorientation
+            </label>
+          </div>
+
+          <div className="assessmentFormGrid" style={{ marginTop: 'var(--spacing-md)' }}>
+            <div className="form-group">
+              <label className="form-label">Hospitalizations (last 30 days)</label>
+              <input
+                type="number"
+                min="0"
+                name="hospiceHospitalizationsLast30Days"
+                value={formData.hospiceHospitalizationsLast30Days}
+                onChange={handleChange}
+                placeholder="0"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Rapid weight loss (kg last month)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                name="hospiceRapidWeightLossKgLastMonth"
+                value={formData.hospiceRapidWeightLossKgLastMonth}
+                onChange={handleChange}
+                placeholder="e.g., 2.5"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Eligibility Notes</label>
+            <textarea
+              name="hospiceNotes"
+              value={formData.hospiceNotes}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Additional hospice eligibility notes..."
             />
           </div>
         </section>

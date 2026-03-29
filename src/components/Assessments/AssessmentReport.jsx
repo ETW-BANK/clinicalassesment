@@ -4,6 +4,226 @@ import ReactMarkdown from 'react-markdown';
 import assessmentService from '../../services/assessmentService';
 import patientService from '../../services/patientService';
 import toast from 'react-hot-toast';
+import './AssessmentReport.css';
+
+const looksLikeMarkdown = (text) => {
+  if (!text) return false;
+  return /(^|\n)\s*#{1,6}\s+\S/.test(text) || /\*\*[^*]+\*\*/.test(text) || /(^|\n)\s*[-*]\s+\S/.test(text);
+};
+
+const parsePlainReportText = (text) => {
+  const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return [];
+
+  const KNOWN_SECTION_TITLES = new Set([
+    'Assessment',
+    'Patient Identification',
+    'Assessment Metadata',
+    'Vital Signs',
+    'Interventions',
+    'Neurological Status',
+    'Skin Conditions',
+    'Skin Condition',
+    'Respiratory Assessment',
+    'Mobility Assessment',
+    'Gastrointestinal Assessment',
+    'Genitourinary Assessment',
+    'Pain Details',
+    'Diagnoses',
+    'Hospice Eligibility',
+    'Nurse Notes (verbatim)',
+    'Clinical Summary (AI)',
+    'Clinical Summary',
+  ]);
+
+  const isSectionTitle = (line) => KNOWN_SECTION_TITLES.has(String(line || '').trim());
+  const isIgnorable = (line) => !String(line || '').trim();
+
+  const lines = normalized.split('\n');
+
+  // Split into sections by known titles.
+  const rawSections = [];
+  let currentTitle = null;
+  let currentLines = [];
+
+  const pushSection = () => {
+    const cleaned = currentLines
+      .map((l) => String(l ?? '').replace(/\s+$/g, ''))
+      .filter((l) => l !== undefined);
+    if (cleaned.some((l) => String(l).trim() !== '')) {
+      rawSections.push({ title: currentTitle, lines: cleaned });
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = String(line || '').trim();
+    if (isSectionTitle(trimmed)) {
+      pushSection();
+      currentTitle = trimmed;
+      currentLines = [];
+      continue;
+    }
+    currentLines.push(line);
+  }
+  pushSection();
+
+  const splitInlineKeyValues = (line) => {
+    const textLine = String(line || '').trim();
+    const matches = [];
+    if (!textLine.includes(':')) return matches;
+
+    // Best-effort: parse repeated "Key: Value" segments on the same line.
+    // Example: "Blood Pressure: 120/80 Pulse Rate: 15 Respiratory Rate: 14"
+    const pattern = /([A-Za-z0-9][A-Za-z0-9\s()≤\/%\-\.]+?):\s*(.*?)(?=\s+[A-Za-z0-9][A-Za-z0-9\s()≤\/%\-\.]+?:|$)/g;
+    let m;
+    while ((m = pattern.exec(textLine)) !== null) {
+      const key = String(m[1] || '').trim();
+      const value = String(m[2] || '').trim();
+      if (key) matches.push({ key, value });
+    }
+    return matches;
+  };
+
+  const parseEntriesFromLines = (sectionLines) => {
+    const cleaned = sectionLines.map((l) => String(l || '')).filter((l) => l !== undefined);
+    const entries = [];
+    const leftovers = [];
+
+    for (let i = 0; i < cleaned.length; i++) {
+      const line = cleaned[i];
+      const trimmed = line.trim();
+      if (isIgnorable(trimmed)) continue;
+
+      const inlinePairs = splitInlineKeyValues(trimmed);
+      if (inlinePairs.length >= 2) {
+        entries.push(...inlinePairs);
+        continue;
+      }
+
+      const colonIdx = trimmed.indexOf(':');
+      if (colonIdx > 0) {
+        const key = trimmed.slice(0, colonIdx).trim();
+        const value = trimmed.slice(colonIdx + 1).trim();
+        if (key) entries.push({ key, value });
+        continue;
+      }
+
+      // Key on one line, value on the next line (your current report format)
+      let j = i + 1;
+      while (j < cleaned.length && isIgnorable(cleaned[j])) j++;
+      const nextTrimmed = j < cleaned.length ? cleaned[j].trim() : '';
+
+      if (nextTrimmed && !isSectionTitle(nextTrimmed)) {
+        entries.push({ key: trimmed, value: nextTrimmed });
+        i = j;
+        continue;
+      }
+
+      leftovers.push(trimmed);
+    }
+
+    return { entries, leftovers };
+  };
+
+  const parseDiagnoses = (sectionLines) => {
+    const cleaned = sectionLines.map((l) => String(l || '')).filter((l) => l !== undefined);
+    const items = [];
+    let current = null;
+
+    const startNew = (category) => {
+      current = {
+        category: category || 'Diagnosis',
+        description: '',
+        icd10: '',
+        primary: false,
+      };
+      items.push(current);
+    };
+
+    for (let i = 0; i < cleaned.length; i++) {
+      const trimmed = cleaned[i].trim();
+      if (isIgnorable(trimmed)) continue;
+
+      // Inline "ICD-10: X" line
+      if (/^icd-10\s*:/i.test(trimmed)) {
+        const val = trimmed.split(':').slice(1).join(':').trim();
+        if (!current) startNew('Diagnosis');
+        current.icd10 = val;
+        continue;
+      }
+
+      // Primary line followed by description
+      if (trimmed.toLowerCase() === 'primary') {
+        if (!current) startNew('Diagnosis');
+        current.primary = true;
+
+        let j = i + 1;
+        while (j < cleaned.length && isIgnorable(cleaned[j])) j++;
+        const nextTrimmed = j < cleaned.length ? cleaned[j].trim() : '';
+        if (nextTrimmed && !nextTrimmed.includes(':') && nextTrimmed.toLowerCase() !== 'primary') {
+          if (!current.description) current.description = nextTrimmed;
+          i = j;
+        }
+        continue;
+      }
+
+      // Anything else without a colon is usually the category name (Cancer / HeartDisease / etc)
+      if (!trimmed.includes(':')) {
+        const shouldStartNew = !current || current.description || current.icd10 || current.primary;
+        if (shouldStartNew) {
+          startNew(trimmed);
+        } else if (!current.description) {
+          current.description = trimmed;
+        }
+        continue;
+      }
+
+      // Generic key:value line inside diagnoses (best-effort)
+      const idx = trimmed.indexOf(':');
+      if (idx > 0) {
+        const key = trimmed.slice(0, idx).trim().toLowerCase();
+        const value = trimmed.slice(idx + 1).trim();
+        if (!current) startNew('Diagnosis');
+        if (key.includes('icd-10')) current.icd10 = value;
+        if (key === 'description' && !current.description) current.description = value;
+      }
+    }
+
+    return items;
+  };
+
+  const sections = [];
+  rawSections.forEach((raw, idx) => {
+    const title = raw.title || 'Assessment';
+    const content = (raw.lines || []).filter((l) => l !== undefined);
+
+    if (String(title).toLowerCase() === 'diagnoses') {
+      sections.push({ type: 'diagnoses', title, items: parseDiagnoses(content) });
+      return;
+    }
+
+    // Notes blocks should remain paragraph-like.
+    if (String(title).toLowerCase().startsWith('nurse notes') || String(title).toLowerCase().startsWith('clinical summary')) {
+      const textBlock = content.map((l) => String(l || '')).join('\n').trim();
+      sections.push({ type: 'text', title, text: textBlock });
+      return;
+    }
+
+    const { entries, leftovers } = parseEntriesFromLines(content);
+    if (entries.length) {
+      sections.push({ type: 'kv', title, entries });
+    } else {
+      const textBlock = leftovers.join('\n').trim();
+      sections.push({ type: 'text', title: idx === 0 ? title : title, text: textBlock });
+    }
+  });
+
+  return sections.filter((s) => {
+    if (s.type === 'kv') return (s.entries || []).length > 0;
+    if (s.type === 'diagnoses') return true;
+    return Boolean(String(s.text || '').trim());
+  });
+};
 
 const AssessmentReport = () => {
   const { id } = useParams();
@@ -68,6 +288,9 @@ const replacePatientIdWithName = (text, patientInfo) => {
   // Replace true/false with Yes/No (case insensitive)
   updatedText = updatedText.replace(/\btrue\b/gi, 'Yes');
   updatedText = updatedText.replace(/\bfalse\b/gi, 'No');
+
+  // Remove AI label from section heading (presentation only)
+  updatedText = updatedText.replace(/Clinical Summary\s*\(AI\)/gi, 'Clinical Summary');
 
   // Remove any top-level label/title like "AI Report" from the generated markdown
   updatedText = updatedText
@@ -161,6 +384,23 @@ const replacePatientIdWithName = (text, patientInfo) => {
 
   const reportText = assessment?.aiReport?.reportText || '';
   const generatedAt = assessment?.aiReport?.generatedAt;
+  const displayText = reportText ? replacePatientIdWithName(reportText, patient) : '';
+  const parsedPlainSections = parsePlainReportText(displayText);
+  const usePlain = parsedPlainSections.length > 0;
+  const asMarkdown = !usePlain && looksLikeMarkdown(displayText);
+  const plainSections = usePlain ? parsedPlainSections : [];
+  const formatSectionTitle = (title) => {
+    if (!title) return '';
+    if (String(title).toLowerCase() === 'clinical summary (ai)') return 'Clinical Summary';
+    return title;
+  };
+
+  const renderKvValue = (value) => {
+    const text = (value ?? '').toString();
+    const lowered = text.trim().toLowerCase();
+    const isMissing = !text.trim() || lowered === 'not provided' || lowered === '—';
+    return <span className={isMissing ? 'assessmentReportMuted' : undefined}>{text.trim() || '—'}</span>;
+  };
 
   return (
     <div style={styles.container}>
@@ -169,7 +409,7 @@ const replacePatientIdWithName = (text, patientInfo) => {
           <button onClick={() => navigate('/patients')} style={styles.backButton}>
             ← Back to Patients
           </button>
-          <div style={styles.headerActions}>
+            <div style={styles.headerActions} className="assessmentReportNoPrint">
             <button onClick={copyReportToClipboard} style={styles.copyButton}>
               📋 Copy Report
             </button>
@@ -196,9 +436,88 @@ const replacePatientIdWithName = (text, patientInfo) => {
         )}
 
         {reportText ? (
-          <div style={styles.report}>
-            <ReactMarkdown>{replacePatientIdWithName(reportText, patient)}</ReactMarkdown>
-          </div>
+          asMarkdown ? (
+            <div style={styles.report} className="assessmentReportMarkdown">
+              <ReactMarkdown>{displayText}</ReactMarkdown>
+            </div>
+          ) : (
+            <div style={styles.report} className="assessmentReportPlain">
+              {plainSections.map((section, idx) => {
+                if (section.type === 'kv') {
+                  return (
+                    <section key={`${section.title}-${idx}`} className="assessmentReportSection">
+                      <h2 className="assessmentReportSectionTitle">{formatSectionTitle(section.title)}</h2>
+                      <div className="assessmentReportKvGrid">
+                        {(section.entries || []).map((e) => (
+                          <div key={`${e.key}-${e.value}`} className="assessmentReportKvItem">
+                            <div className="assessmentReportKvLabel">{e.key}</div>
+                            <div className="assessmentReportKvValue">{renderKvValue(e.value)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (section.type === 'diagnoses') {
+                  return (
+                    <section key={`${section.title}-${idx}`} className="assessmentReportSection">
+                      <h2 className="assessmentReportSectionTitle">{formatSectionTitle(section.title)}</h2>
+                      {(section.items || []).length ? (
+                        <div className="assessmentReportCards">
+                          {(section.items || []).map((item, itemIdx) => (
+                            <div key={`${item.category}-${itemIdx}`} className="assessmentReportCard">
+                              <div className="assessmentReportCardTitle">
+                                <div className="assessmentReportCardHeading">{item.category || 'Diagnosis'}</div>
+                                {item.primary ? (
+                                  <span className="assessmentReportBadge">Primary</span>
+                                ) : null}
+                              </div>
+
+                              <div className="assessmentReportCardBody">
+                                {item.description ? (
+                                  <p className="assessmentReportCardText">{item.description}</p>
+                                ) : null}
+                                {item.icd10 ? (
+                                  <p className="assessmentReportMeta">
+                                    <strong>ICD-10:</strong> {item.icd10}
+                                  </p>
+                                ) : null}
+                                {!item.icd10 && !item.description ? (
+                                  <p className="assessmentReportMeta">—</p>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="assessmentReportParagraph">No diagnoses documented.</p>
+                      )}
+                    </section>
+                  );
+                }
+
+                if (section.type === 'text') {
+                  if (!section.title) {
+                    return (
+                      <p key={`p-${idx}`} className="assessmentReportParagraph">
+                        {section.text}
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <section key={`${section.title}-${idx}`} className="assessmentReportSection">
+                      <h2 className="assessmentReportSectionTitle">{formatSectionTitle(section.title)}</h2>
+                      <p className="assessmentReportParagraph">{section.text}</p>
+                    </section>
+                  );
+                }
+
+                return null;
+              })}
+            </div>
+          )
         ) : (
           <div style={styles.errorContainer}>
             <p>This assessment does not have an AI report yet.</p>
@@ -229,11 +548,11 @@ const replacePatientIdWithName = (text, patientInfo) => {
 
 const styles = {
   container: {
-    maxWidth: '1000px',
+    maxWidth: '1280px',
     margin: '0 auto',
-    padding: '2rem',
+    padding: 'clamp(1rem, 2.5vw, 2.5rem)',
     minHeight: 'calc(100vh - 70px)',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: 'transparent',
   },
   reportContainer: {
     backgroundColor: 'white',
@@ -247,8 +566,8 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '1rem 2rem',
-    backgroundColor: '#f8f9fa',
-    borderBottom: '1px solid #dee2e6',
+    backgroundColor: 'var(--white-color)',
+    borderBottom: '1px solid var(--border-color)',
   },
   backButton: {
     backgroundColor: 'transparent',
@@ -290,8 +609,8 @@ const styles = {
     alignItems: 'center',
     gap: '1rem',
     padding: '1.5rem 2rem',
-    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-    borderBottom: '1px solid #e0e0e0',
+    background: 'var(--white-color)',
+    borderBottom: '1px solid var(--border-color)',
   },
   patientAvatar: {
     width: '60px',
@@ -319,16 +638,16 @@ const styles = {
     flexWrap: 'wrap',
   },
   report: {
-    padding: '2rem',
-    lineHeight: '1.6',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
+    padding: 'clamp(1.25rem, 2.5vw, 2.5rem)',
+    lineHeight: '1.65',
+    fontFamily: "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
   },
   footer: {
     padding: '1rem 2rem',
-    backgroundColor: '#f8f9fa',
-    borderTop: '1px solid #dee2e6',
+    backgroundColor: 'var(--white-color)',
+    borderTop: '1px solid var(--border-color)',
     fontSize: '0.875rem',
-    color: '#6c757d',
+    color: 'var(--gray-color)',
   },
   metadata: {
     margin: 0,

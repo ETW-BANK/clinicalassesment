@@ -1,0 +1,304 @@
+/* ================================
+   GLOBAL REPORT STYLES
+================================ */
+
+.assessmentReportMarkdown,
+.assessmentReportPlain {
+  color: var(--dark-color);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 1.02rem;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  min-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ================================
+   SECTION (CARD STYLE)
+================================ */
+
+.assessmentReportSection {
+  padding: 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--white-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  animation: fadeInUp 0.3s ease both;
+}
+
+.assessmentReportSection:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.assessmentReportSectionTitle {
+  margin: 0 0 14px;
+  color: var(--primary-color);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* ================================
+   KEY VALUE GRID
+================================ */
+
+.assessmentReportKvGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.assessmentReportKvItem {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fafbff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.assessmentReportKvItem:hover {
+  background: #f1f5ff;
+}
+
+.assessmentReportKvLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.assessmentReportKvValue {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--dark-color);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.assessmentReportMuted {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* ================================
+   TEXT BLOCKS
+================================ */
+
+.assessmentReportParagraph {
+  margin: 0;
+  color: var(--dark-color);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+/* ================================
+   DIAGNOSIS CARDS
+================================ */
+
+.assessmentReportCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.assessmentReportCard {
+  border-radius: 14px;
+  background: white;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.assessmentReportCard:hover {
+  border-color: #667eea;
+  box-shadow: 0 6px 18px rgba(102, 126, 234, 0.1);
+}
+
+.assessmentReportCardTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.assessmentReportCardHeading {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.assessmentReportBadge {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.assessmentReportCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assessmentReportCardText {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.assessmentReportMeta {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* ================================
+   MARKDOWN STYLING
+================================ */
+
+.assessmentReportMarkdown h1,
+.assessmentReportMarkdown h2,
+.assessmentReportMarkdown h3 {
+  margin: 1.2rem 0 0.6rem;
+  line-height: 1.3;
+}
+
+.assessmentReportMarkdown h1 {
+  font-size: 1.4rem;
+}
+
+.assessmentReportMarkdown h2 {
+  font-size: 1.2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+}
+
+.assessmentReportMarkdown h3 {
+  font-size: 1.05rem;
+}
+
+.assessmentReportMarkdown p {
+  margin: 0.6rem 0;
+}
+
+.assessmentReportMarkdown ul,
+.assessmentReportMarkdown ol {
+  padding-left: 1.2rem;
+}
+
+.assessmentReportMarkdown li {
+  margin: 0.3rem 0;
+}
+
+.assessmentReportMarkdown blockquote {
+  margin: 0.8rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #667eea;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.assessmentReportMarkdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.assessmentReportMarkdown th,
+.assessmentReportMarkdown td {
+  border: 1px solid var(--border-color);
+  padding: 0.6rem;
+}
+
+.assessmentReportMarkdown th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+/* ================================
+   BUTTONS
+================================ */
+
+button {
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 1024px) {
+  .assessmentReportMarkdown,
+  .assessmentReportPlain {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .assessmentReportSection {
+    padding: 14px;
+  }
+
+  .assessmentReportSectionTitle {
+    font-size: 1.1rem;
+  }
+
+  .assessmentReportKvGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .assessmentReportCards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .assessmentReportMarkdown,
+  .assessmentReportPlain {
+    font-size: 0.95rem;
+  }
+}
+
+/* ================================
+   PRINT STYLES
+================================ */
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .assessmentReportSection {
+    box-shadow: none !important;
+  }
+
+  .assessmentReportNoPrint {
+    display: none !important;
+  }
+}
+
+/* ================================
+   ANIMATIONS
+================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

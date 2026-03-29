@@ -115,7 +115,7 @@ const NewAssessmentFormPage = () => {
 
 const styles = {
   page: {
-    backgroundColor: '#667eea',
+    backgroundColor: 'transparent',
     minHeight: 'calc(100vh - 70px)',
   },
   container: {

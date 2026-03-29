@@ -30,88 +30,112 @@ const normalizeAssessment = (assessment) => {
 
 const normalizeAssessments = (data) => extractArray(data).map(normalizeAssessment);
 
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const buildCreateAssessmentPayload = (assessmentData) => {
+  const payload = {
+    patientId: assessmentData.patientId,
+    nurseNotes: assessmentData.nurseNotes || null,
+
+    // Vital Signs
+    bloodPressure: assessmentData.bloodPressure || null,
+    pulseRate: toNullableNumber(assessmentData.pulseRate),
+    respiratoryRate: toNullableNumber(assessmentData.respiratoryRate),
+    spO2: toNullableNumber(assessmentData.spO2),
+    temperature: toNullableNumber(assessmentData.temperature),
+    oxygenSaturation: toNullableNumber(assessmentData.oxygenSaturation),
+
+    // Additional vital sign fields
+    oxygenLitersPerMinute: toNullableNumber(assessmentData.oxygenLitersPerMinute),
+    painScore: toNullableNumber(assessmentData.painScore),
+
+    // Interventions
+    oxygenGiven: Boolean(assessmentData.oxygenGiven),
+    ivStarted: Boolean(assessmentData.ivStarted),
+    cprPerformed: Boolean(assessmentData.cprPerformed),
+
+    // Neurological
+    isAlert: Boolean(assessmentData.isAlert),
+    isOriented: Boolean(assessmentData.isOriented),
+
+    // Skin conditions
+    skinWarm: Boolean(assessmentData.skinWarm),
+    skinDry: Boolean(assessmentData.skinDry),
+    skinPale: Boolean(assessmentData.skinPale),
+    skinCool: Boolean(assessmentData.skinCool),
+    skinHot: Boolean(assessmentData.skinHot),
+    skinFlushed: Boolean(assessmentData.skinFlushed),
+    skinCyanotic: Boolean(assessmentData.skinCyanotic),
+    skinClammy: Boolean(assessmentData.skinClammy),
+    skinJaundice: Boolean(assessmentData.skinJaundice),
+    skinDiaphoretic: Boolean(assessmentData.skinDiaphoretic),
+    otherSkinCondition: assessmentData.otherSkinCondition || null,
+
+    // Respiratory
+    respiratorySymmetrical: Boolean(assessmentData.respiratorySymmetrical),
+    respiratoryAsymmetrical: Boolean(assessmentData.respiratoryAsymmetrical),
+    lungSounds: assessmentData.lungSounds || null,
+    otherLungSounds: assessmentData.otherLungSounds || null,
+    respiratoryEffort: assessmentData.respiratoryEffort || null,
+    otherRespiratoryEffort: assessmentData.otherRespiratoryEffort || null,
+
+    // Mobility
+    gaitSteady: Boolean(assessmentData.gaitSteady),
+    usesCane: Boolean(assessmentData.usesCane),
+    usesCrutches: Boolean(assessmentData.usesCrutches),
+    usesWheelchair: Boolean(assessmentData.usesWheelchair),
+    bedridden: Boolean(assessmentData.bedridden),
+    requiresAssistance: Boolean(assessmentData.requiresAssistance),
+    otherMobilityStatus: assessmentData.otherMobilityStatus || null,
+    otherAssistiveDevice: assessmentData.otherAssistiveDevice || null,
+
+    // Gastrointestinal
+    diet: assessmentData.diet || null,
+    appetite: assessmentData.appetite || null,
+    bowelSounds: assessmentData.bowelSounds || null,
+    lastBowelMovement: assessmentData.lastBowelMovement || null,
+    abdomen: assessmentData.abdomen || null,
+    gastrointestinalComments: assessmentData.gastrointestinalComments || null,
+
+    // Genitourinary
+    urineAppearance: assessmentData.urineAppearance || null,
+    continence: assessmentData.continence || null,
+    catheter: assessmentData.catheter ?? null,
+    lastVoid: assessmentData.lastVoid || null,
+    genitourinaryComments: assessmentData.genitourinaryComments || null,
+
+    // Pain details
+    painLocation: assessmentData.painLocation || null,
+    painDuration: assessmentData.painDuration || null,
+    painIntervention: assessmentData.painIntervention || null,
+    painEffectiveness: assessmentData.painEffectiveness || null,
+    painComments: assessmentData.painComments || null,
+  };
+
+  // NEW optional fields
+  if (Array.isArray(assessmentData.diagnoses)) {
+    payload.diagnoses = assessmentData.diagnoses;
+  } else if (assessmentData.diagnoses == null) {
+    payload.diagnoses = null;
+  }
+
+  if (assessmentData.hospiceEligibility && typeof assessmentData.hospiceEligibility === 'object') {
+    payload.hospiceEligibility = assessmentData.hospiceEligibility;
+  } else if (assessmentData.hospiceEligibility == null) {
+    payload.hospiceEligibility = null;
+  }
+
+  return payload;
+};
+
 const assessmentService = {
   // Create new assessment
   async createAssessment(assessmentData) {
-    // Transform data to match CreateAssessmentDto
-    const payload = {
-      patientId: assessmentData.patientId,
-      nurseNotes: assessmentData.nurseNotes || null,
-      
-      // Vital Signs
-      bloodPressure: assessmentData.bloodPressure || null,
-      pulseRate: assessmentData.pulseRate || null,
-      respiratoryRate: assessmentData.respiratoryRate || null,
-      spO2: assessmentData.spO2 || null,
-      temperature: assessmentData.temperature || null,
-      oxygenSaturation: assessmentData.oxygenSaturation || null,
-
-      // Additional vital sign fields (updated API)
-      oxygenLitersPerMinute: assessmentData.oxygenLitersPerMinute ?? null,
-      painScore: assessmentData.painScore ?? null,
-      
-      // Interventions
-      oxygenGiven: assessmentData.oxygenGiven || false,
-      ivStarted: assessmentData.ivStarted || false,
-      cprPerformed: assessmentData.cprPerformed || false,
-      
-      // Neurological
-      isAlert: assessmentData.isAlert || false,
-      isOriented: assessmentData.isOriented || false,
-      
-      // Skin conditions (all booleans)
-      skinWarm: assessmentData.skinWarm || false,
-      skinDry: assessmentData.skinDry || false,
-      skinPale: assessmentData.skinPale || false,
-      skinCool: assessmentData.skinCool || false,
-      skinHot: assessmentData.skinHot || false,
-      skinFlushed: assessmentData.skinFlushed || false,
-      skinCyanotic: assessmentData.skinCyanotic || false,
-      skinClammy: assessmentData.skinClammy || false,
-      skinJaundice: assessmentData.skinJaundice || false,
-      skinDiaphoretic: assessmentData.skinDiaphoretic || false,
-      otherSkinCondition: assessmentData.otherSkinCondition || null,
-      
-      // Respiratory
-      respiratorySymmetrical: assessmentData.respiratorySymmetrical || false,
-      respiratoryAsymmetrical: assessmentData.respiratoryAsymmetrical || false,
-      lungSounds: assessmentData.lungSounds || null,
-      otherLungSounds: assessmentData.otherLungSounds || null,
-      respiratoryEffort: assessmentData.respiratoryEffort || null,
-      otherRespiratoryEffort: assessmentData.otherRespiratoryEffort || null,
-      
-      // Mobility
-      gaitSteady: assessmentData.gaitSteady || false,
-      usesCane: assessmentData.usesCane || false,
-      usesCrutches: assessmentData.usesCrutches || false,
-      usesWheelchair: assessmentData.usesWheelchair || false,
-      bedridden: assessmentData.bedridden || false,
-      requiresAssistance: assessmentData.requiresAssistance || false,
-      otherMobilityStatus: assessmentData.otherMobilityStatus || null,
-      otherAssistiveDevice: assessmentData.otherAssistiveDevice || null,
-
-      // Gastrointestinal (updated API)
-      diet: assessmentData.diet || null,
-      appetite: assessmentData.appetite || null,
-      bowelSounds: assessmentData.bowelSounds || null,
-      lastBowelMovement: assessmentData.lastBowelMovement || null,
-      abdomen: assessmentData.abdomen || null,
-      gastrointestinalComments: assessmentData.gastrointestinalComments || null,
-
-      // Genitourinary (updated API)
-      urineAppearance: assessmentData.urineAppearance || null,
-      continence: assessmentData.continence || null,
-      catheter: assessmentData.catheter ?? null,
-      lastVoid: assessmentData.lastVoid || null,
-      genitourinaryComments: assessmentData.genitourinaryComments || null,
-
-      // Pain details (updated API)
-      painLocation: assessmentData.painLocation || null,
-      painDuration: assessmentData.painDuration || null,
-      painIntervention: assessmentData.painIntervention || null,
-      painEffectiveness: assessmentData.painEffectiveness || null,
-      painComments: assessmentData.painComments || null,
-    };
+    const payload = buildCreateAssessmentPayload(assessmentData);
     
     const response = await api.post('/Assessments', payload);
     return response.data; // Returns AIReport

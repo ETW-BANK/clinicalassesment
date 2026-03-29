@@ -102,7 +102,7 @@ const PatientDetail = () => {
           max-width: 800px;
           margin: 0 auto;
           padding: 2rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: transparent;
           min-height: calc(100vh - 70px);
         }
 
