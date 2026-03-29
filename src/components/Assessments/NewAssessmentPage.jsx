@@ -1,36 +1,23 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import AssessmentTypeSelector from './AssessmentTypeSelector';
 
 const NewAssessmentPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const patientId = searchParams.get('patientId') || '';
-  const [selectedType, setSelectedType] = useState('');
 
-  const handleTypeSelect = useCallback(
-    (typeId) => {
-      setSelectedType(typeId);
+  useEffect(() => {
+    if (!patientId) {
+      toast.error('Please open New Assessment from a patient');
+      navigate('/patients');
+      return;
+    }
 
-      if (!patientId) {
-        toast.error('Please open assessment from a patient');
-        navigate('/patients');
-        return;
-      }
+    navigate(`/assessments/new/form?patientId=${encodeURIComponent(patientId)}`);
+  }, [navigate, patientId]);
 
-      const nextUrl = `/assessments/new/form?patientId=${encodeURIComponent(patientId)}&type=${encodeURIComponent(typeId)}`;
-      navigate(nextUrl);
-    },
-    [navigate, patientId]
-  );
-
-  return (
-    <AssessmentTypeSelector
-      selectedType={selectedType}
-      onTypeSelect={handleTypeSelect}
-    />
-  );
+  return null;
 };
 
 export default NewAssessmentPage;

@@ -1,7 +1,6 @@
 // components/AssessmentForm.jsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import assessmentService from '../../services/assessmentService';
-import { ASSESSMENT_TYPE_CONFIG } from './AssessmentTypeSelector';
 import './AssessmentForm.css';
 
 const FormHeaderIcon = () => (
@@ -176,11 +175,24 @@ const NotesIcon = () => (
   </svg>
 );
 
-const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
-  const normalizedType = String(assessmentType || '').trim().toLowerCase();
-  const typeConfig = ASSESSMENT_TYPE_CONFIG[normalizedType] || ASSESSMENT_TYPE_CONFIG.standard;
-  const enabledSections = typeConfig?.sections || ASSESSMENT_TYPE_CONFIG.standard.sections;
-  const hasSection = (sectionId) => enabledSections.includes(sectionId);
+const AssessmentForm = ({ patientId, onSuccess, onCancel }) => {
+  const steps = useMemo(
+    () => [
+      { id: 'vitalSigns', title: 'Vital Signs', icon: <VitalIcon /> },
+      { id: 'interventions', title: 'Interventions', icon: <InterventionsIcon /> },
+      { id: 'neurological', title: 'Neurological Status', icon: <NeuroIcon /> },
+      { id: 'skin', title: 'Skin Conditions', icon: <SkinIcon /> },
+      { id: 'respiratory', title: 'Respiratory Assessment', icon: <RespiratoryIcon /> },
+      { id: 'musculoskeletal', title: 'Mobility Assessment', icon: <MobilityIcon /> },
+      { id: 'nurseNotes', title: 'Nurse Notes', icon: <NotesIcon /> },
+    ],
+    []
+  );
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const currentStep = steps[stepIndex] || steps[0];
+  const isFirstStep = stepIndex === 0;
+  const isLastStep = stepIndex === steps.length - 1;
 
   const [formData, setFormData] = useState({
     patientId: patientId,
@@ -248,6 +260,12 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!isLastStep) {
+      setStepIndex((prev) => Math.min(prev + 1, steps.length - 1));
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -280,14 +298,20 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       <div className="assessmentFormHeader">
         <span className="assessmentFormHeaderIcon"><FormHeaderIcon /></span>
         <div>
-          <h2 className="assessmentFormHeaderTitle">New {typeConfig?.name || 'Assessment'}</h2>
+          <h2 className="assessmentFormHeaderTitle">New Clinical Assessment</h2>
         </div>
       </div>
+
+      <section className="assessmentFormSection">
+        <h3 className="assessmentSectionTitle">
+          <SectionIcon>{currentStep?.icon}</SectionIcon>
+          {currentStep?.title}
+        </h3>
+      </section>
       
       {/* Vital Signs Section */}
-      {hasSection('vitalSigns') && (
+      {currentStep?.id === 'vitalSigns' && (
         <section className="assessmentFormSection">
-          <h3 className="assessmentSectionTitle"><SectionIcon><VitalIcon /></SectionIcon>Vital Signs</h3>
           <div className="assessmentFormGrid">
             <div className="form-group">
               <label className="form-label">Blood Pressure (e.g., 120/80)</label>
@@ -374,9 +398,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       )}
       
       {/* Interventions Section */}
-      {hasSection('interventions') && (
+      {currentStep?.id === 'interventions' && (
         <section className="assessmentFormSection">
-          <h3 className="assessmentSectionTitle"><SectionIcon><InterventionsIcon /></SectionIcon>Interventions</h3>
           <div className="checkbox-group">
             <label className="checkbox-label">
               <input
@@ -412,9 +435,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       )}
       
       {/* Neurological Section */}
-      {hasSection('neurological') && (
+      {currentStep?.id === 'neurological' && (
         <section className="assessmentFormSection">
-          <h3 className="assessmentSectionTitle"><SectionIcon><NeuroIcon /></SectionIcon>Neurological Status</h3>
           <div className="checkbox-group">
             <label className="checkbox-label">
               <input
@@ -440,9 +462,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       )}
       
       {/* Skin Conditions Section */}
-      {hasSection('skin') && (
+      {currentStep?.id === 'skin' && (
         <section className="assessmentFormSection">
-          <h3 className="assessmentSectionTitle"><SectionIcon><SkinIcon /></SectionIcon>Skin Conditions</h3>
           <div className="assessmentCheckboxGrid">
             {['Warm', 'Dry', 'Pale', 'Cool', 'Hot', 'Flushed', 'Cyanotic', 'Clammy', 'Jaundice', 'Diaphoretic'].map(condition => {
               const fieldName = `skin${condition}`;
@@ -474,9 +495,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       )}
       
       {/* Respiratory Section */}
-      {hasSection('respiratory') && (
+      {currentStep?.id === 'respiratory' && (
         <section className="assessmentFormSection">
-          <h3 className="assessmentSectionTitle"><SectionIcon><RespiratoryIcon /></SectionIcon>Respiratory Assessment</h3>
           <div className="checkbox-group">
             <label className="checkbox-label">
               <input
@@ -557,9 +577,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       )}
       
       {/* Mobility Section */}
-      {hasSection('musculoskeletal') && (
+      {currentStep?.id === 'musculoskeletal' && (
         <section className="assessmentFormSection">
-          <h3 className="assessmentSectionTitle"><SectionIcon><MobilityIcon /></SectionIcon>Mobility Assessment</h3>
           <div className="checkbox-group">
             <label className="checkbox-label">
               <input
@@ -650,27 +669,50 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       )}
       
       {/* Nurse Notes */}
-      <section className="assessmentFormSection">
-        <h3 className="assessmentSectionTitle"><SectionIcon><NotesIcon /></SectionIcon>Nurse Notes</h3>
-        <textarea
-          name="nurseNotes"
-          value={formData.nurseNotes}
-          onChange={handleChange}
-          rows="5"
-          placeholder="Enter detailed assessment notes..."
-        />
-      </section>
+      {currentStep?.id === 'nurseNotes' && (
+        <section className="assessmentFormSection">
+          <textarea
+            name="nurseNotes"
+            value={formData.nurseNotes}
+            onChange={handleChange}
+            rows="5"
+            placeholder="Enter detailed assessment notes..."
+          />
+        </section>
+      )}
       
       {/* Form Actions */}
       <div className="assessmentFormActions">
-        {onCancel && (
-          <button type="button" onClick={onCancel} className="assessmentBtnCancel">
-            Cancel
+        <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
+          {onCancel && (
+            <button type="button" onClick={onCancel} className="assessmentBtnCancel">
+              Cancel
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setStepIndex((prev) => Math.max(prev - 1, 0))}
+            className="assessmentBtnCancel"
+            disabled={isFirstStep || isSubmitting}
+          >
+            Previous
+          </button>
+        </div>
+
+        {!isLastStep ? (
+          <button
+            type="button"
+            onClick={() => setStepIndex((prev) => Math.min(prev + 1, steps.length - 1))}
+            disabled={isSubmitting}
+            className="btn-primary"
+          >
+            Next
+          </button>
+        ) : (
+          <button type="submit" disabled={isSubmitting} className="btn-primary">
+            {isSubmitting ? 'Saving...' : 'Save Assessment'}
           </button>
         )}
-        <button type="submit" disabled={isSubmitting} className="btn-primary">
-          {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
-        </button>
       </div>
     </form>
   );

@@ -106,7 +106,9 @@
 .assessmentFormActions {
   display: flex;
   gap: var(--spacing-md);
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--border-color);
 }

@@ -110,7 +110,7 @@ const PatientList = () => {
   };
 
   const handleNewAssessment = (patientId) => {
-    navigate(`/assessments/new?patientId=${patientId}`);
+    navigate(`/assessments/new/form?patientId=${patientId}`);
   };
 
   const clearSearch = () => {

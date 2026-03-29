@@ -26,7 +26,7 @@ const PatientDetail = () => {
   };
 
   const handleNewAssessment = () => {
-    navigate(`/assessments/new?patientId=${id}`);
+    navigate(`/assessments/new/form?patientId=${id}`);
   };
 
   if (loading) {

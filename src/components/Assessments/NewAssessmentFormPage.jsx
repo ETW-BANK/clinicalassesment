@@ -10,10 +10,8 @@ const NewAssessmentFormPage = () => {
   const [loadingPatient, setLoadingPatient] = useState(true);
 
   const patientId = searchParams.get('patientId') || '';
-  const assessmentType = searchParams.get('type') || '';
 
   const normalizedPatientId = useMemo(() => patientId.trim(), [patientId]);
-  const normalizedAssessmentType = useMemo(() => String(assessmentType).trim(), [assessmentType]);
 
   useEffect(() => {
     if (!normalizedPatientId) {
@@ -108,7 +106,7 @@ const NewAssessmentFormPage = () => {
 
         {/* Assessment Form Container */}
         <div style={styles.formContainer}>
-          <AssessmentForm patientId={normalizedPatientId} assessmentType={normalizedAssessmentType} />
+            <AssessmentForm patientId={normalizedPatientId} />
         </div>
       </div>
     </div>

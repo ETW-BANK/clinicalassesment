@@ -203,7 +203,7 @@ const replacePatientIdWithName = (text, patientInfo) => {
           <div style={styles.errorContainer}>
             <p>This assessment does not have an AI report yet.</p>
             <p style={styles.smallText}>
-              Generate reports from Patient History using the daily report button after the nurse marks all assessments for that date as Done.
+              Generate the report from Patient History using the "Generate report" button.
             </p>
             <button
               onClick={() => navigate(`/patients/${assessment?.patientId}/history`)}
