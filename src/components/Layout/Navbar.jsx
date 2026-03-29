@@ -60,7 +60,7 @@ const Navbar = () => {
 
       <style>{`
         .navbar {
-          background: var(--secondary-color);
+          background: #0a2342;
           color: white;
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           position: sticky;
