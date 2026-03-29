@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/clinicalassesment/static/css/main.d9323004.css",
-    "main.js": "/clinicalassesment/static/js/main.fb144664.js",
+    "main.css": "/clinicalassesment/static/css/main.123bf0a0.css",
+    "main.js": "/clinicalassesment/static/js/main.884580f8.js",
     "static/js/453.79cb7bd4.chunk.js": "/clinicalassesment/static/js/453.79cb7bd4.chunk.js",
     "index.html": "/clinicalassesment/index.html",
-    "main.d9323004.css.map": "/clinicalassesment/static/css/main.d9323004.css.map",
-    "main.fb144664.js.map": "/clinicalassesment/static/js/main.fb144664.js.map",
+    "main.123bf0a0.css.map": "/clinicalassesment/static/css/main.123bf0a0.css.map",
+    "main.884580f8.js.map": "/clinicalassesment/static/js/main.884580f8.js.map",
     "453.79cb7bd4.chunk.js.map": "/clinicalassesment/static/js/453.79cb7bd4.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.d9323004.css",
-    "static/js/main.fb144664.js"
+    "static/css/main.123bf0a0.css",
+    "static/js/main.884580f8.js"
   ]
 }
