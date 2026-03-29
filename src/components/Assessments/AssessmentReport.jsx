@@ -8,7 +8,7 @@ import './AssessmentReport.css';
 // ─── SECTION REGISTRY ────────────────────────────────────────────────────────
 // All known section headings from BuildDeterministicReport.
 // Narrative sections (prose) are identified separately below.
-const TABLE_SECTIONS = new Set([
+const TABLE_SECTIONS = [
   'Patient & Assessment Metadata',
   'Patient Identification',
   'Assessment Metadata',
@@ -24,17 +24,21 @@ const TABLE_SECTIONS = new Set([
   'Pain Details',
   'Diagnoses',
   'Hospice Eligibility',
-]);
+];
 
-const NARRATIVE_SECTIONS = new Set([
+const NARRATIVE_SECTIONS = [
   'Clinical Summary',
   'Clinical Summary (AI)',
   'Nurse Notes (verbatim)',
   'Nurse Notes',
   'Nursing Analytical Note',
-]);
+];
 
-const ALL_KNOWN = new Set([...TABLE_SECTIONS, ...NARRATIVE_SECTIONS]);
+function normalizeSection(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+const ALL_KNOWN = new Set([...TABLE_SECTIONS, ...NARRATIVE_SECTIONS].map(normalizeSection));
 
 // ─── PARSER ──────────────────────────────────────────────────────────────────
 // Parses the new two-part output:
@@ -67,8 +71,9 @@ const parseReport = (raw) => {
     // Detect divider lines (── or ─── or ===) — skip them
     if (/^[─═\-]{4,}/.test(trimmed)) continue;
 
-    // Detect a known section heading
-    if (ALL_KNOWN.has(trimmed)) {
+    // Detect a known section heading (case/space-insensitive)
+    const norm = normalizeSection(trimmed);
+    if (ALL_KNOWN.has(norm)) {
       flush();
       currentTitle = trimmed;
       continue;
@@ -85,7 +90,7 @@ const parseReport = (raw) => {
       const lines = sec.lines;
 
       // Narrative sections → prose text
-      if (NARRATIVE_SECTIONS.has(title) || !title) {
+      if (NARRATIVE_SECTIONS.map(normalizeSection).includes(normalizeSection(title)) || !title) {
         const text = lines
           .map((l) => String(l).trimEnd())
           .join('\n')
@@ -94,7 +99,7 @@ const parseReport = (raw) => {
       }
 
       // Diagnoses → special card layout
-      if (title === 'Diagnoses') {
+      if (normalizeSection(title) === normalizeSection('Diagnoses')) {
         return { type: 'diagnoses', title, items: parseDiagnoses(lines) };
       }
 
