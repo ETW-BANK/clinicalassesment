@@ -44,80 +44,86 @@ const NewAssessmentFormPage = () => {
 
   if (loadingPatient) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loadingCard}>
-          <div style={styles.spinner}></div>
-          <p style={styles.loadingText}>Loading patient information...</p>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.loadingCard}>
+            <div style={styles.spinner}></div>
+            <p style={styles.loadingText}>Loading patient information...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      {/* Hero Section */}
-      <div style={styles.heroSection}>
-        <div style={styles.heroContent}>
-          <div style={styles.heroIcon}>📝</div>
-          <div>
-            <h1 style={styles.heroTitle}>New Clinical Assessment</h1>
-            <p style={styles.heroSubtitle}>Document patient examination and clinical findings</p>
-          </div>
-        </div>
-        
-        {/* Patient Summary Card */}
-        {patient && (
-          <div style={styles.patientSummary}>
-            <div style={styles.patientAvatar}>
-              {patient.fullName?.charAt(0) || patient.firstName?.charAt(0) || 'P'}
+    <div style={styles.page}>
+      <div style={styles.container}>
+        {/* Hero Section */}
+        <div style={styles.heroSection}>
+          <div style={styles.heroContent}>
+            <div style={styles.heroIcon}>📝</div>
+            <div>
+              <h1 style={styles.heroTitle}>New Clinical Assessment</h1>
+              <p style={styles.heroSubtitle}>Document patient examination and clinical findings</p>
             </div>
-            <div style={styles.patientSummaryInfo}>
-              <h3 style={styles.patientSummaryName}>
-                {patient.fullName || `${patient.firstName} ${patient.lastName}` || 'Patient'}
-              </h3>
-              <div style={styles.patientSummaryDetails}>
-                {patient.dateOfBirth && (
-                  <span>
-                    <span style={styles.summaryIcon}>🎂</span>
-                    {new Date(patient.dateOfBirth).toLocaleDateString()}
-                  </span>
-                )}
-                {patient.gender && (
-                  <span>
-                    <span style={styles.summaryIcon}>⚥</span>
-                    {patient.gender}
-                  </span>
-                )}
-                {patient.phone && (
-                  <span>
-                    <span style={styles.summaryIcon}>📞</span>
-                    {patient.phone}
-                  </span>
-                )}
-              </div>
-            </div>
-            <button onClick={() => navigate(`/patients/${normalizedPatientId}`)} style={styles.viewPatientButton}>
-              View Full Profile →
-            </button>
           </div>
-        )}
-      </div>
 
-      {/* Assessment Form Container */}
-      <div style={styles.formContainer}>
-        <AssessmentForm patientId={normalizedPatientId} assessmentType={normalizedAssessmentType} />
+          {/* Patient Summary Card */}
+          {patient && (
+            <div style={styles.patientSummary}>
+              <div style={styles.patientAvatar}>
+                {patient.fullName?.charAt(0) || patient.firstName?.charAt(0) || 'P'}
+              </div>
+              <div style={styles.patientSummaryInfo}>
+                <h3 style={styles.patientSummaryName}>
+                  {patient.fullName || `${patient.firstName} ${patient.lastName}` || 'Patient'}
+                </h3>
+                <div style={styles.patientSummaryDetails}>
+                  {patient.dateOfBirth && (
+                    <span>
+                      <span style={styles.summaryIcon}>🎂</span>
+                      {new Date(patient.dateOfBirth).toLocaleDateString()}
+                    </span>
+                  )}
+                  {patient.gender && (
+                    <span>
+                      <span style={styles.summaryIcon}>⚥</span>
+                      {patient.gender}
+                    </span>
+                  )}
+                  {patient.phone && (
+                    <span>
+                      <span style={styles.summaryIcon}>📞</span>
+                      {patient.phone}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => navigate(`/patients/${normalizedPatientId}`)} style={styles.viewPatientButton}>
+                View Full Profile →
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Assessment Form Container */}
+        <div style={styles.formContainer}>
+          <AssessmentForm patientId={normalizedPatientId} assessmentType={normalizedAssessmentType} />
+        </div>
       </div>
     </div>
   );
 };
 
 const styles = {
+  page: {
+    backgroundColor: '#667eea',
+    minHeight: 'calc(100vh - 70px)',
+  },
   container: {
-    maxWidth: '1400px',
+    maxWidth: '1600px',
     margin: '0 auto',
     padding: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    minHeight: 'calc(100vh - 70px)',
   },
   heroSection: {
     marginBottom: '2rem',

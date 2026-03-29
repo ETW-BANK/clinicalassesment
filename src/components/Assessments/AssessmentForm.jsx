@@ -2,6 +2,179 @@
 import React, { useState } from 'react';
 import assessmentService from '../../services/assessmentService';
 import { ASSESSMENT_TYPE_CONFIG } from './AssessmentTypeSelector';
+import './AssessmentForm.css';
+
+const FormHeaderIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 8h6M9 12h6M9 16h4"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const SectionIcon = ({ children }) => (
+  <span className="assessmentSectionIcon" aria-hidden="true">
+    {children}
+  </span>
+);
+
+const VitalIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M3 12h4l2-6 4 12 2-6h6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const InterventionsIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M12 5v14M5 12h14"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const NeuroIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M9.5 3.5c-2.5 0-4.5 2-4.5 4.5 0 1.3.5 2.5 1.4 3.3-.9.9-1.4 2.1-1.4 3.4 0 2.5 2 4.5 4.5 4.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M14.5 3.5c2.5 0 4.5 2 4.5 4.5 0 1.3-.5 2.5-1.4 3.3.9.9 1.4 2.1 1.4 3.4 0 2.5-2 4.5-4.5 4.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 4v16"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const SkinIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M12 3s6 6.3 6 11a6 6 0 1 1-12 0c0-4.7 6-11 6-11Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const RespiratoryIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M12 3v7"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M7 10c-2.2 0-4 1.8-4 4v2a4 4 0 0 0 8 0v-1"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M17 10c2.2 0 4 1.8 4 4v2a4 4 0 0 1-8 0v-1"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const MobilityIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M10 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M10 8l-1 4 3 2 1 6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 12l-3 2M12 14l3-2 3 2"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const NotesIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M4 5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M14 3v6h6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M7 13h10M7 17h7"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
   const normalizedType = String(assessmentType || '').trim().toLowerCase();
@@ -103,16 +276,21 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={styles.form}>
-      <h2>New {typeConfig?.name || 'Assessment'}</h2>
+    <form onSubmit={handleSubmit} className="assessmentForm">
+      <div className="assessmentFormHeader">
+        <span className="assessmentFormHeaderIcon"><FormHeaderIcon /></span>
+        <div>
+          <h2 className="assessmentFormHeaderTitle">New {typeConfig?.name || 'Assessment'}</h2>
+        </div>
+      </div>
       
       {/* Vital Signs Section */}
       {hasSection('vitalSigns') && (
-        <section style={styles.section}>
-          <h3>Vital Signs</h3>
-          <div style={styles.grid}>
-            <div style={styles.formGroup}>
-              <label>Blood Pressure (e.g., 120/80)</label>
+        <section className="assessmentFormSection">
+          <h3 className="assessmentSectionTitle"><SectionIcon><VitalIcon /></SectionIcon>Vital Signs</h3>
+          <div className="assessmentFormGrid">
+            <div className="form-group">
+              <label className="form-label">Blood Pressure (e.g., 120/80)</label>
               <input
                 type="text"
                 name="bloodPressure"
@@ -122,8 +300,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               />
             </div>
             
-            <div style={styles.formGroup}>
-              <label>Pulse Rate (bpm)</label>
+            <div className="form-group">
+              <label className="form-label">Pulse Rate (bpm)</label>
               <input
                 type="number"
                 name="pulseRate"
@@ -133,8 +311,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               />
             </div>
             
-            <div style={styles.formGroup}>
-              <label>Respiratory Rate</label>
+            <div className="form-group">
+              <label className="form-label">Respiratory Rate</label>
               <input
                 type="number"
                 name="respiratoryRate"
@@ -144,8 +322,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               />
             </div>
             
-            <div style={styles.formGroup}>
-              <label>SpO2 (%)</label>
+            <div className="form-group">
+              <label className="form-label">SpO2 (%)</label>
               <input
                 type="number"
                 name="spO2"
@@ -155,8 +333,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               />
             </div>
             
-            <div style={styles.formGroup}>
-              <label>Temperature (°C)</label>
+            <div className="form-group">
+              <label className="form-label">Temperature (°C)</label>
               <input
                 type="number"
                 step="0.1"
@@ -167,8 +345,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label>Oxygen (L/min)</label>
+            <div className="form-group">
+              <label className="form-label">Oxygen (L/min)</label>
               <input
                 type="number"
                 step="0.5"
@@ -179,8 +357,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label>Pain Score (0-10)</label>
+            <div className="form-group">
+              <label className="form-label">Pain Score (0-10)</label>
               <input
                 type="number"
                 min="0"
@@ -197,10 +375,10 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       
       {/* Interventions Section */}
       {hasSection('interventions') && (
-        <section style={styles.section}>
-          <h3>Interventions</h3>
-          <div style={styles.checkboxGroup}>
-            <label>
+        <section className="assessmentFormSection">
+          <h3 className="assessmentSectionTitle"><SectionIcon><InterventionsIcon /></SectionIcon>Interventions</h3>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="oxygenGiven"
@@ -210,7 +388,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               Oxygen Given
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="ivStarted"
@@ -220,7 +398,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               IV Started
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="cprPerformed"
@@ -235,10 +413,10 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       
       {/* Neurological Section */}
       {hasSection('neurological') && (
-        <section style={styles.section}>
-          <h3>Neurological Status</h3>
-          <div style={styles.checkboxGroup}>
-            <label>
+        <section className="assessmentFormSection">
+          <h3 className="assessmentSectionTitle"><SectionIcon><NeuroIcon /></SectionIcon>Neurological Status</h3>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="isAlert"
@@ -248,7 +426,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               Alert
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="isOriented"
@@ -263,13 +441,13 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       
       {/* Skin Conditions Section */}
       {hasSection('skin') && (
-        <section style={styles.section}>
-          <h3>Skin Conditions</h3>
-          <div style={styles.checkboxGrid}>
+        <section className="assessmentFormSection">
+          <h3 className="assessmentSectionTitle"><SectionIcon><SkinIcon /></SectionIcon>Skin Conditions</h3>
+          <div className="assessmentCheckboxGrid">
             {['Warm', 'Dry', 'Pale', 'Cool', 'Hot', 'Flushed', 'Cyanotic', 'Clammy', 'Jaundice', 'Diaphoretic'].map(condition => {
               const fieldName = `skin${condition}`;
               return (
-                <label key={condition}>
+                <label key={condition} className="checkbox-label">
                   <input
                     type="checkbox"
                     name={fieldName}
@@ -282,8 +460,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
             })}
           </div>
           
-          <div style={styles.formGroup}>
-            <label>Other Skin Condition</label>
+          <div className="form-group">
+            <label className="form-label">Other Skin Condition</label>
             <input
               type="text"
               name="otherSkinCondition"
@@ -297,10 +475,10 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       
       {/* Respiratory Section */}
       {hasSection('respiratory') && (
-        <section style={styles.section}>
-          <h3>Respiratory Assessment</h3>
-          <div style={styles.checkboxGroup}>
-            <label>
+        <section className="assessmentFormSection">
+          <h3 className="assessmentSectionTitle"><SectionIcon><RespiratoryIcon /></SectionIcon>Respiratory Assessment</h3>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="respiratorySymmetrical"
@@ -310,7 +488,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               Symmetrical Breath Sounds
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="respiratoryAsymmetrical"
@@ -321,8 +499,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
             </label>
           </div>
           
-          <div style={styles.formGroup}>
-            <label>Lung Sounds</label>
+          <div className="form-group">
+            <label className="form-label">Lung Sounds</label>
             <select
               name="lungSounds"
               value={formData.lungSounds}
@@ -338,8 +516,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
             </select>
           </div>
           
-          <div style={styles.formGroup}>
-            <label>Other Lung Sounds</label>
+          <div className="form-group">
+            <label className="form-label">Other Lung Sounds</label>
             <input
               type="text"
               name="otherLungSounds"
@@ -349,8 +527,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
             />
           </div>
           
-          <div style={styles.formGroup}>
-            <label>Respiratory Effort</label>
+          <div className="form-group">
+            <label className="form-label">Respiratory Effort</label>
             <select
               name="respiratoryEffort"
               value={formData.respiratoryEffort}
@@ -365,8 +543,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
             </select>
           </div>
           
-          <div style={styles.formGroup}>
-            <label>Other Respiratory Effort</label>
+          <div className="form-group">
+            <label className="form-label">Other Respiratory Effort</label>
             <input
               type="text"
               name="otherRespiratoryEffort"
@@ -380,10 +558,10 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       
       {/* Mobility Section */}
       {hasSection('musculoskeletal') && (
-        <section style={styles.section}>
-          <h3>Mobility Assessment</h3>
-          <div style={styles.checkboxGroup}>
-            <label>
+        <section className="assessmentFormSection">
+          <h3 className="assessmentSectionTitle"><SectionIcon><MobilityIcon /></SectionIcon>Mobility Assessment</h3>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="gaitSteady"
@@ -393,7 +571,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               Gait Steady
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="requiresAssistance"
@@ -403,7 +581,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               Requires Assistance
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="bedridden"
@@ -415,8 +593,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
           </div>
           
           <h4>Assistive Devices</h4>
-          <div style={styles.checkboxGroup}>
-            <label>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="usesCane"
@@ -426,7 +604,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               Cane
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="usesCrutches"
@@ -436,7 +614,7 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
               Crutches
             </label>
             
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 name="usesWheelchair"
@@ -447,8 +625,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
             </label>
           </div>
           
-          <div style={styles.formGroup}>
-            <label>Other Mobility Status</label>
+          <div className="form-group">
+            <label className="form-label">Other Mobility Status</label>
             <input
               type="text"
               name="otherMobilityStatus"
@@ -458,8 +636,8 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
             />
           </div>
           
-          <div style={styles.formGroup}>
-            <label>Other Assistive Device</label>
+          <div className="form-group">
+            <label className="form-label">Other Assistive Device</label>
             <input
               type="text"
               name="otherAssistiveDevice"
@@ -472,98 +650,30 @@ const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
       )}
       
       {/* Nurse Notes */}
-      <section style={styles.section}>
-        <h3>Nurse Notes</h3>
+      <section className="assessmentFormSection">
+        <h3 className="assessmentSectionTitle"><SectionIcon><NotesIcon /></SectionIcon>Nurse Notes</h3>
         <textarea
           name="nurseNotes"
           value={formData.nurseNotes}
           onChange={handleChange}
           rows="5"
-          style={styles.textarea}
           placeholder="Enter detailed assessment notes..."
         />
       </section>
       
       {/* Form Actions */}
-      <div style={styles.buttonGroup}>
+      <div className="assessmentFormActions">
         {onCancel && (
-          <button type="button" onClick={onCancel} style={styles.cancelButton}>
+          <button type="button" onClick={onCancel} className="assessmentBtnCancel">
             Cancel
           </button>
         )}
-        <button type="submit" disabled={isSubmitting} style={styles.submitButton}>
+        <button type="submit" disabled={isSubmitting} className="btn-primary">
           {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
         </button>
       </div>
     </form>
   );
-};
-
-const styles = {
-  form: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '24px',
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  },
-  section: {
-    marginBottom: '32px',
-    paddingBottom: '24px',
-    borderBottom: '1px solid #e0e0e0',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '16px',
-  },
-  formGroup: {
-    marginBottom: '16px',
-  },
-  checkboxGroup: {
-    display: 'flex',
-    gap: '16px',
-    flexWrap: 'wrap',
-    marginBottom: '16px',
-  },
-  checkboxGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-    gap: '8px',
-    marginBottom: '16px',
-  },
-  textarea: {
-    width: '100%',
-    padding: '8px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'flex-end',
-  },
-  submitButton: {
-    padding: '10px 20px',
-    backgroundColor: '#667eea',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  cancelButton: {
-    padding: '10px 20px',
-    backgroundColor: '#f0f0f0',
-    color: '#666',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
 };
 
 export default AssessmentForm;
