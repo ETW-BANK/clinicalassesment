@@ -7,40 +7,37 @@ import toast from 'react-hot-toast';
 
 const AssessmentReport = () => {
   const { id } = useParams();
-  const [report, setReport] = useState(null);
+  const [assessment, setAssessment] = useState(null);
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadReportAndPatient();
+    loadAssessmentAndPatient();
   }, [id]);
 
-  const loadReportAndPatient = async () => {
+  const loadAssessmentAndPatient = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching report for assessment ID:', id);
-      const reportData = await assessmentService.getAssessmentReport(id);
-      console.log('Report data:', reportData);
-      setReport(reportData);
-      
-      // Try to get patient info from the report or fetch it
-      if (reportData.patientId) {
-        const patientData = await patientService.getPatientById(reportData.patientId);
+      console.log('Fetching assessment (no AI generation) for ID:', id);
+      const assessmentData = await assessmentService.getAssessmentById(id);
+      setAssessment(assessmentData);
+
+      const patientId = assessmentData?.patientId || assessmentData?.patient?.id;
+      if (patientId) {
+        const patientData = await patientService.getPatientById(patientId);
         setPatient(patientData);
       }
     } catch (error) {
       console.error('Error loading report:', error);
       setError(error);
       
-      if (error.response?.status === 404) {
-        toast.error('Report not found. The assessment may still be processing.');
-      } else if (error.code === 'ERR_NETWORK') {
+      if (error.code === 'ERR_NETWORK') {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error(error.response?.data?.message || 'Failed to load assessment report');
+        toast.error(error.response?.data?.message || 'Failed to load assessment');
       }
     } finally {
       setLoading(false);
@@ -49,15 +46,15 @@ const AssessmentReport = () => {
 
 const replacePatientIdWithName = (text, patientInfo) => {
   if (!text) return text;
-  if (!patientInfo || !patientInfo.id) return text;
-  
-  const patientName = patientInfo.fullName || 
-                     `${patientInfo.firstName} ${patientInfo.lastName}` || 
-                     'Patient';
-  const patientId = patientInfo.id;
-  
+
   let updatedText = text;
-  
+
+  const patientId = patientInfo?.id;
+  const firstName = patientInfo?.firstName || '';
+  const lastName = patientInfo?.lastName || '';
+  const fallbackName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : 'Patient';
+  const patientName = patientInfo?.fullName || fallbackName;
+
   // Replace the patient ID with the full name (case insensitive)
   if (patientId) {
     const regex = new RegExp(patientId, 'gi');
@@ -71,75 +68,49 @@ const replacePatientIdWithName = (text, patientInfo) => {
   // Replace true/false with Yes/No (case insensitive)
   updatedText = updatedText.replace(/\btrue\b/gi, 'Yes');
   updatedText = updatedText.replace(/\bfalse\b/gi, 'No');
+
+  // Remove any top-level label/title like "AI Report" from the generated markdown
+  updatedText = updatedText
+    .replace(/^\s*#{1,6}\s*AI\s*Report\s*$/gim, '')
+    .replace(/^\s*\*\*AI\s*Report\*\*\s*$/gim, '')
+    .replace(/^\s*AI\s*Report\s*$/gim, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   
   return updatedText;
 };
 
   const copyReportToClipboard = async () => {
-  if (!selectedAssessment?.report?.reportText) {
-    toast.error('No report content to copy');
-    return;
-  }
-
-  try {
-    // Get the report text
-    let cleanReport = selectedAssessment.report.reportText;
-    
-    // Get patient info
-    const patientInfo = selectedAssessment.patientInfo || patient;
-    
-    // Replace patient ID with name if patient info exists
-    if (patientInfo && patientInfo.id) {
-      const patientName = patientInfo.fullName || 
-                         `${patientInfo.firstName} ${patientInfo.lastName}` || 
-                         'Patient';
-      const patientId = patientInfo.id;
-      
-      // Replace the patient ID with the full name
-      cleanReport = cleanReport.replace(new RegExp(patientId, 'g'), patientName);
+    const reportText = assessment?.aiReport?.reportText;
+    if (!reportText) {
+      toast.error('No report content to copy');
+      return;
     }
-    
-    // Replace "Patient Identification:" with "Patient Name:"
-    cleanReport = cleanReport.replace(/Patient Identification:/g, 'Patient Name:');
-    cleanReport = cleanReport.replace(/Patient ID:/g, 'Patient Name:');
-    
-    // Replace true/false with Yes/No
-    cleanReport = cleanReport.replace(/\btrue\b/gi, 'Yes');
-    cleanReport = cleanReport.replace(/\bfalse\b/gi, 'No');
-    
-    // Clean up markdown formatting for a cleaner copy
-    cleanReport = cleanReport
-      // Remove bold markdown **text** -> text
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      // Remove italic markdown *text* -> text
-      .replace(/\*(.*?)\*/g, '$1')
-      // Remove heading markers (#, ##, etc.)
-      .replace(/^#{1,6}\s+/gm, '')
-      // Replace bullet points (* or -) with • symbol
-      .replace(/^[\*\-]\s+/gm, '• ')
-      // Remove extra asterisks
-      .replace(/\*/g, '')
-      // Replace multiple newlines with double newline
-      .replace(/\n{3,}/g, '\n\n')
-      // Trim whitespace
-      .trim();
-    
-    // Add a clean header
-    const header = `PATIENT CLINICAL ASSESSMENT REPORT\n${'='.repeat(50)}\n\n`;
-    const footer = `\n\n${'='.repeat(50)}\nReport generated on: ${new Date().toLocaleString()}\n`;
-    
-    const finalReport = header + cleanReport + footer;
-    
-    await navigator.clipboard.writeText(finalReport);
-    toast.success('✓ Report copied to clipboard!');
-  } catch (err) {
-    console.error('Failed to copy:', err);
-    toast.error('Failed to copy report. Please try again.');
-  }
-};
+
+    try {
+      let cleanReport = replacePatientIdWithName(reportText, patient);
+
+      cleanReport = cleanReport
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/^[\*\-]\s+/gm, '• ')
+        .replace(/\*/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      const header = `PATIENT CLINICAL ASSESSMENT REPORT\n${'='.repeat(50)}\n\n`;
+      const footer = `\n\n${'='.repeat(50)}\nCopied on: ${new Date().toLocaleString()}\n`;
+      await navigator.clipboard.writeText(header + cleanReport + footer);
+      toast.success('✓ Report copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast.error('Failed to copy report. Please try again.');
+    }
+  };
 
   const handleRetry = () => {
-    loadReportAndPatient();
+    loadAssessmentAndPatient();
   };
 
   if (loading) {
@@ -147,8 +118,7 @@ const replacePatientIdWithName = (text, patientInfo) => {
       <div style={styles.container}>
         <div style={styles.loadingContainer}>
           <div style={styles.spinner}></div>
-          <p>Loading AI-generated report...</p>
-          <p style={styles.smallText}>This may take a few moments</p>
+          <p>Loading assessment report...</p>
         </div>
       </div>
     );
@@ -161,9 +131,7 @@ const replacePatientIdWithName = (text, patientInfo) => {
           <div style={styles.errorIcon}>⚠️</div>
           <h3 style={styles.errorTitle}>Unable to Load Report</h3>
           <p style={styles.errorMessage}>
-            {error.response?.status === 404 
-              ? 'The assessment report is not yet available or may have been deleted.'
-              : error.response?.data?.message || 'An error occurred while loading the report.'}
+            {error.response?.data?.message || 'An error occurred while loading the assessment.'}
           </p>
           <div style={styles.buttonGroup}>
             <button onClick={handleRetry} style={styles.retryButton}>
@@ -178,7 +146,7 @@ const replacePatientIdWithName = (text, patientInfo) => {
     );
   }
 
-  if (!report) {
+  if (!assessment) {
     return (
       <div style={styles.container}>
         <div style={styles.errorContainer}>
@@ -191,13 +159,8 @@ const replacePatientIdWithName = (text, patientInfo) => {
     );
   }
 
-  // Get report text and replace patient ID with name
-  let reportText = report.reportText || report;
-  if (patient) {
-    reportText = replacePatientIdWithName(reportText);
-  }
-  
-  const generatedAt = report.generatedAt;
+  const reportText = assessment?.aiReport?.reportText || '';
+  const generatedAt = assessment?.aiReport?.generatedAt;
 
   return (
     <div style={styles.container}>
@@ -231,10 +194,26 @@ const replacePatientIdWithName = (text, patientInfo) => {
             </div>
           </div>
         )}
-        
-        <div style={styles.report}>
-          <ReactMarkdown>{reportText}</ReactMarkdown>
-        </div>
+
+        {reportText ? (
+          <div style={styles.report}>
+            <ReactMarkdown>{replacePatientIdWithName(reportText, patient)}</ReactMarkdown>
+          </div>
+        ) : (
+          <div style={styles.errorContainer}>
+            <p>This assessment does not have an AI report yet.</p>
+            <p style={styles.smallText}>
+              Generate reports from Patient History using the daily report button after the nurse marks all assessments for that date as Done.
+            </p>
+            <button
+              onClick={() => navigate(`/patients/${assessment?.patientId}/history`)}
+              style={styles.retryButton}
+              disabled={!assessment?.patientId}
+            >
+              Go to Patient History
+            </button>
+          </div>
+        )}
         
         {generatedAt && (
           <div style={styles.footer}>
@@ -412,30 +391,5 @@ const styles = {
     transition: 'all 0.3s ease',
   },
 };
-
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  }
-`;
-document.head.appendChild(styleSheet);
 
 export default AssessmentReport;

@@ -9,7 +9,7 @@ const PatientList = () => {
   const [filteredPatients, setFilteredPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name'); // 'name', 'date', 'assessments'
+  const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const navigate = useNavigate();
 
@@ -25,22 +25,18 @@ const PatientList = () => {
     try {
       setLoading(true);
       
-      // Load all patients
       const patientsData = await patientService.getAllPatients();
       console.log('Loaded patients:', patientsData);
       
-      // Load all assessments to count per patient
       const allAssessments = await assessmentService.getAllAssessments();
       console.log('All assessments:', allAssessments);
       
-      // Create a map of patientId to assessment count
       const assessmentCountMap = {};
       allAssessments.forEach(assessment => {
         const patientId = assessment.patientId;
         assessmentCountMap[patientId] = (assessmentCountMap[patientId] || 0) + 1;
       });
       
-      // Add assessment count to each patient
       const patientsWithCounts = patientsData.map(patient => ({
         ...patient,
         assessmentCount: assessmentCountMap[patient.id] || 0
@@ -63,7 +59,6 @@ const PatientList = () => {
   const filterAndSortPatients = () => {
     let filtered = [...patients];
     
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(patient => {
         const fullName = (patient.fullName || `${patient.firstName} ${patient.lastName}` || patient.name || '').toLowerCase();
@@ -71,13 +66,10 @@ const PatientList = () => {
         const phone = (patient.phone || '').toLowerCase();
         const search = searchTerm.toLowerCase();
         
-        return fullName.includes(search) || 
-               email.includes(search) || 
-               phone.includes(search);
+        return fullName.includes(search) || email.includes(search) || phone.includes(search);
       });
     }
     
-    // Sort patients
     filtered.sort((a, b) => {
       let aValue, bValue;
       
@@ -132,9 +124,9 @@ const PatientList = () => {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
+      <div className="patient-list-container">
+        <div className="loading-container">
+          <div className="spinner"></div>
           <p>Loading patients...</p>
         </div>
       </div>
@@ -142,42 +134,41 @@ const PatientList = () => {
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
+    <div className="patient-list-container">
+      <div className="patient-list-header">
         <div>
-          <h1 style={styles.title}>Patients</h1>
-          <p style={styles.subtitle}>Manage and view all patient records</p>
+          <h1 className="patient-list-title">Patients</h1>
+          <p className="patient-list-subtitle">Manage and view all patient records</p>
         </div>
-        <button onClick={() => navigate('/patients/new')} style={styles.addButton}>
+        <button onClick={() => navigate('/patients/new')} className="btn-success add-patient-btn">
           + Add New Patient
         </button>
       </div>
 
-      {/* Search and Filter Bar */}
-      <div style={styles.searchSection}>
-        <div style={styles.searchBar}>
-          <span style={styles.searchIcon}>🔍</span>
+      <div className="patient-list-search-section">
+        <div className="search-bar">
+          <span className="search-icon">🔍</span>
           <input
             type="text"
             placeholder="Search by name, email, or phone number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={styles.searchInput}
+            className="search-input"
           />
           {searchTerm && (
-            <button onClick={clearSearch} style={styles.clearButton}>
+            <button onClick={clearSearch} className="clear-search-btn">
               ✕
             </button>
           )}
         </div>
         
-        <div style={styles.filterControls}>
-          <div style={styles.sortGroup}>
-            <label style={styles.sortLabel}>Sort by:</label>
+        <div className="filter-controls">
+          <div className="sort-group">
+            <label className="sort-label">Sort by:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              style={styles.sortSelect}
+              className="sort-select"
             >
               <option value="name">Name</option>
               <option value="date">Date Added</option>
@@ -185,7 +176,7 @@ const PatientList = () => {
             </select>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              style={styles.sortOrderButton}
+              className="sort-order-btn"
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
             </button>
@@ -193,104 +184,100 @@ const PatientList = () => {
         </div>
       </div>
 
-      {/* Results Summary */}
-      <div style={styles.resultsSummary}>
+      <div className="patient-list-results-summary">
         <span>
           {filteredPatients.length} {filteredPatients.length === 1 ? 'patient' : 'patients'} found
           {searchTerm && ` matching "${searchTerm}"`}
         </span>
         {searchTerm && (
-          <button onClick={clearSearch} style={styles.clearSearchButton}>
+          <button onClick={clearSearch} className="clear-filters-btn">
             Clear search
           </button>
         )}
       </div>
 
-      {/* Patient Grid */}
       {filteredPatients.length === 0 ? (
-        <div style={styles.emptyState}>
+        <div className="patient-list-empty-state">
           {searchTerm ? (
             <>
-              <div style={styles.emptyIcon}>🔍</div>
+              <div className="empty-icon">🔍</div>
               <h3>No patients found</h3>
               <p>No patients match "{searchTerm}". Try a different search term.</p>
-              <button onClick={clearSearch} style={styles.emptyStateButton}>
-                Clear Search
-              </button>
+              <button onClick={clearSearch} className="btn-primary">Clear Search</button>
             </>
           ) : (
             <>
-              <div style={styles.emptyIcon}>👥</div>
+              <div className="empty-icon">👥</div>
               <h3>No patients yet</h3>
               <p>Get started by adding your first patient.</p>
-              <button onClick={() => navigate('/patients/new')} style={styles.emptyStateButton}>
+              <button onClick={() => navigate('/patients/new')} className="btn-primary">
                 Add New Patient
               </button>
             </>
           )}
         </div>
       ) : (
-        <div style={styles.grid}>
+        <div className="patient-list-grid">
           {filteredPatients.map((patient) => {
             const patientName = patient.fullName || `${patient.firstName} ${patient.lastName}` || patient.name || 'Unnamed Patient';
             const initials = getInitials(patientName);
             const assessmentCount = patient.assessmentCount || 0;
             
             return (
-              <div key={patient.id} style={styles.card}>
-                <div style={styles.cardHeader}>
-                  <div style={styles.avatar}>
+              <div key={patient.id} className="patient-card">
+                <div className="patient-card-header">
+                  <div className="patient-avatar">
                     {initials}
                   </div>
-                  <div style={styles.cardInfo}>
-                    <h3 style={styles.patientName}>{patientName}</h3>
+                  <div className="patient-info">
+                    <h3 className="patient-name">{patientName}</h3>
                     {patient.email && (
-                      <p style={styles.patientDetail}>
-                        <span style={styles.detailIcon}>📧</span> {patient.email}
+                      <p className="patient-detail">
+                        <span className="detail-icon">📧</span> {patient.email}
                       </p>
                     )}
                     {patient.phone && (
-                      <p style={styles.patientDetail}>
-                        <span style={styles.detailIcon}>📞</span> {patient.phone}
+                      <p className="patient-detail">
+                        <span className="detail-icon">📞</span> {patient.phone}
                       </p>
                     )}
                     {patient.dateOfBirth && (
-                      <p style={styles.patientDetail}>
-                        <span style={styles.detailIcon}>🎂</span> {new Date(patient.dateOfBirth).toLocaleDateString()}
+                      <p className="patient-detail">
+                        <span className="detail-icon">🎂</span> {new Date(patient.dateOfBirth).toLocaleDateString()}
                       </p>
                     )}
                   </div>
                 </div>
                 
-                <div style={styles.cardStats}>
-                  <div style={styles.stat}>
-                    <span style={styles.statValue}>{assessmentCount}</span>
-                    <span style={styles.statLabel}>Assessments</span>
+                <div className="patient-card-stats">
+                  <div className="stat">
+                    <span className="stat-value">{assessmentCount}</span>
+                    <span className="stat-label">Assessments</span>
                   </div>
                   {patient.gender && (
-                    <div style={styles.stat}>
-                      <span style={styles.statValue}>{patient.gender}</span>
-                      <span style={styles.statLabel}>Gender</span>
+                    <div className="stat">
+                      <span className="stat-value">{patient.gender}</span>
+                      <span className="stat-label">Gender</span>
                     </div>
                   )}
                 </div>
                 
-                <div style={styles.cardActions}>
+                <div className="patient-card-actions">
                   <button
                     onClick={() => handleViewPatient(patient.id)}
-                    style={styles.viewButton}
+                    className="btn-view"
                   >
                     View Details
                   </button>
                   <button
                     onClick={() => handleViewHistory(patient.id)}
-                    style={styles.historyButton}
+                    className="btn-history"
                   >
                     View History
                   </button>
                   <button
                     onClick={() => handleNewAssessment(patient.id)}
-                    style={styles.assessButton}
+                    className="btn-assess"
                   >
                     New Assessment
                   </button>
@@ -300,323 +287,345 @@ const PatientList = () => {
           })}
         </div>
       )}
+
+      <style>{`
+        .patient-list-container {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 2rem;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: calc(100vh - 70px);
+        }
+
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          background-color: white;
+          border-radius: 16px;
+          padding: 2rem;
+        }
+
+        .spinner {
+          width: 50px;
+          height: 50px;
+          border: 3px solid #f3f3f3;
+          border-top: 3px solid #3498db;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 1rem;
+        }
+
+        .patient-list-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .patient-list-title {
+          margin: 0;
+          font-size: 2rem;
+          color: white;
+          font-weight: bold;
+        }
+
+        .patient-list-subtitle {
+          margin: 0.5rem 0 0 0;
+          font-size: 0.9rem;
+          color: rgba(255,255,255,0.8);
+        }
+
+        .add-patient-btn {
+          padding: 0.75rem 1.5rem;
+          background: linear-gradient(135deg, #27ae60, #2ecc71);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-size: 1rem;
+          font-weight: 500;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .patient-list-search-section {
+          margin-bottom: 1.5rem;
+        }
+
+        .search-bar {
+          position: relative;
+          margin-bottom: 1rem;
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 1.2rem;
+          color: #999;
+        }
+
+        .search-input {
+          width: 100%;
+          padding: 1rem 2.5rem 1rem 3rem;
+          border: 2px solid rgba(255,255,255,0.2);
+          border-radius: 12px;
+          font-size: 1rem;
+          background-color: rgba(255,255,255,0.95);
+          transition: all 0.3s ease;
+          outline: none;
+        }
+
+        .clear-search-btn {
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          font-size: 1.2rem;
+          cursor: pointer;
+          color: #999;
+        }
+
+        .filter-controls {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .sort-group {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background-color: rgba(255,255,255,0.95);
+          padding: 0.5rem;
+          border-radius: 10px;
+        }
+
+        .sort-label {
+          font-size: 0.875rem;
+          color: #666;
+          margin-left: 0.5rem;
+        }
+
+        .sort-select {
+          padding: 0.5rem;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          cursor: pointer;
+          background-color: white;
+        }
+
+        .sort-order-btn {
+          padding: 0.5rem;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          cursor: pointer;
+          background-color: white;
+          font-size: 1rem;
+          min-width: 40px;
+        }
+
+        .patient-list-results-summary {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+          padding: 0.5rem 0;
+          color: rgba(255,255,255,0.9);
+          font-size: 0.875rem;
+        }
+
+        .clear-filters-btn {
+          background: rgba(255,255,255,0.2);
+          border: none;
+          color: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.75rem;
+        }
+
+        .patient-list-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .patient-card {
+          background-color: white;
+          border-radius: 16px;
+          padding: 1.5rem;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+          transition: all 0.3s ease;
+        }
+
+        .patient-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .patient-card-header {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .patient-avatar {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
+          font-weight: bold;
+          color: white;
+          flex-shrink: 0;
+        }
+
+        .patient-info {
+          flex: 1;
+        }
+
+        .patient-name {
+          margin: 0 0 0.5rem 0;
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: #2c3e50;
+        }
+
+        .patient-detail {
+          margin: 0.25rem 0;
+          font-size: 0.875rem;
+          color: #666;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .detail-icon {
+          font-size: 0.875rem;
+        }
+
+        .patient-card-stats {
+          display: flex;
+          gap: 1.5rem;
+          padding: 1rem 0;
+          margin: 1rem 0;
+          border-top: 1px solid #eee;
+          border-bottom: 1px solid #eee;
+        }
+
+        .stat {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex: 1;
+        }
+
+        .stat-value {
+          font-size: 1.25rem;
+          font-weight: bold;
+          color: #2c3e50;
+        }
+
+        .stat-label {
+          font-size: 0.75rem;
+          color: #999;
+          margin-top: 0.25rem;
+        }
+
+        .patient-card-actions {
+          display: flex;
+          gap: 0.75rem;
+        }
+
+        .btn-view, .btn-history, .btn-assess {
+          flex: 1;
+          padding: 0.6rem;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: all 0.2s ease;
+        }
+
+        .btn-view {
+          background-color: #3498db;
+          color: white;
+        }
+
+        .btn-history {
+          background-color: #9b59b6;
+          color: white;
+        }
+
+        .btn-assess {
+          background-color: #27ae60;
+          color: white;
+        }
+
+        .btn-primary {
+          padding: 0.75rem 1.5rem;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 1rem;
+          font-weight: 500;
+          transition: all 0.3s ease;
+        }
+
+        .patient-list-empty-state {
+          text-align: center;
+          padding: 3rem;
+          background-color: white;
+          border-radius: 16px;
+          color: #666;
+        }
+
+        .empty-icon {
+          font-size: 4rem;
+          margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+          .patient-list-container {
+            padding: 1rem;
+          }
+
+          .patient-list-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .patient-card-actions {
+            flex-direction: column;
+          }
+
+          .sort-group {
+            width: 100%;
+            justify-content: space-between;
+          }
+        }
+      `}</style>
     </div>
   );
 };
-
-const styles = {
-  container: {
-    maxWidth: '1400px',
-    margin: '0 auto',
-    padding: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    minHeight: 'calc(100vh - 70px)',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '2rem',
-    flexWrap: 'wrap',
-    gap: '1rem',
-  },
-  title: {
-    margin: 0,
-    fontSize: '2rem',
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    margin: '0.5rem 0 0 0',
-    fontSize: '0.9rem',
-    color: 'rgba(255,255,255,0.8)',
-  },
-  addButton: {
-    padding: '0.75rem 1.5rem',
-    background: 'linear-gradient(135deg, #27ae60, #2ecc71)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: '500',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-  },
-  searchSection: {
-    marginBottom: '1.5rem',
-  },
-  searchBar: {
-    position: 'relative',
-    marginBottom: '1rem',
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: '1rem',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    fontSize: '1.2rem',
-    color: '#999',
-  },
-  searchInput: {
-    width: '100%',
-    padding: '1rem 2.5rem 1rem 3rem',
-    border: '2px solid rgba(255,255,255,0.2)',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-  },
-  clearButton: {
-    position: 'absolute',
-    right: '1rem',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    background: 'none',
-    border: 'none',
-    fontSize: '1.2rem',
-    cursor: 'pointer',
-    color: '#999',
-    padding: '0.25rem',
-    borderRadius: '50%',
-    width: '24px',
-    height: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s ease',
-  },
-  filterControls: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-  sortGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    padding: '0.5rem',
-    borderRadius: '10px',
-  },
-  sortLabel: {
-    fontSize: '0.875rem',
-    color: '#666',
-    marginLeft: '0.5rem',
-  },
-  sortSelect: {
-    padding: '0.5rem',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-    backgroundColor: 'white',
-  },
-  sortOrderButton: {
-    padding: '0.5rem',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    backgroundColor: 'white',
-    fontSize: '1rem',
-    minWidth: '40px',
-    transition: 'all 0.2s ease',
-  },
-  resultsSummary: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1.5rem',
-    padding: '0.5rem 0',
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: '0.875rem',
-  },
-  clearSearchButton: {
-    background: 'rgba(255,255,255,0.2)',
-    border: 'none',
-    color: 'white',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-    transition: 'all 0.2s ease',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
-    gap: '1.5rem',
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '1.5rem',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-    transition: 'all 0.3s ease',
-    cursor: 'pointer',
-  },
-  cardHeader: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1rem',
-  },
-  avatar: {
-    width: '60px',
-    height: '60px',
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    color: 'white',
-    flexShrink: 0,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  patientName: {
-    margin: '0 0 0.5rem 0',
-    fontSize: '1.2rem',
-    fontWeight: '600',
-    color: '#2c3e50',
-  },
-  patientDetail: {
-    margin: '0.25rem 0',
-    fontSize: '0.875rem',
-    color: '#666',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  detailIcon: {
-    fontSize: '0.875rem',
-  },
-  cardStats: {
-    display: 'flex',
-    gap: '1.5rem',
-    padding: '1rem 0',
-    margin: '1rem 0',
-    borderTop: '1px solid #eee',
-    borderBottom: '1px solid #eee',
-  },
-  stat: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: '1.25rem',
-    fontWeight: 'bold',
-    color: '#2c3e50',
-  },
-  statLabel: {
-    fontSize: '0.75rem',
-    color: '#999',
-    marginTop: '0.25rem',
-  },
-  cardActions: {
-    display: 'flex',
-    gap: '0.75rem',
-  },
-  viewButton: {
-    flex: 1,
-    padding: '0.6rem',
-    backgroundColor: '#3498db',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s ease',
-  },
-  historyButton: {
-    flex: 1,
-    padding: '0.6rem',
-    backgroundColor: '#9b59b6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s ease',
-  },
-  assessButton: {
-    flex: 1,
-    padding: '0.6rem',
-    backgroundColor: '#27ae60',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s ease',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '400px',
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '2rem',
-  },
-  spinner: {
-    width: '50px',
-    height: '50px',
-    border: '3px solid #f3f3f3',
-    borderTop: '3px solid #3498db',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-    marginBottom: '1rem',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '3rem',
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    color: '#666',
-  },
-  emptyIcon: {
-    fontSize: '4rem',
-    marginBottom: '1rem',
-  },
-  emptyStateButton: {
-    marginTop: '1rem',
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3498db',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    transition: 'all 0.2s ease',
-  },
-};
-
-// Add keyframes for spinner animation
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  }
-  
-  .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-  }
-`;
-document.head.appendChild(styleSheet);
 
 export default PatientList;

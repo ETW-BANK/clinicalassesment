@@ -7,6 +7,75 @@ React frontend for a clinical workflow where users can:
 - Create clinical assessments for patients
 - View assessment reports
 
+## How to Use the App (User Guide)
+
+### 1) Register / Login
+
+- Go to `/register` to create an account.
+- Go to `/login` to sign in.
+- After login you are redirected to the Patients page.
+
+### 2) Patients
+
+- **View patients:** go to `/patients`.
+- **Add a patient:** click **New Patient** (or go to `/patients/new`).
+- **View a patient:** click a patient in the list to open `/patients/:id`.
+- **Patient History:** from a patient, open **History** (route: `/patients/:id/history`).
+
+### 3) Create a New Assessment (Type Selector → Form)
+
+Assessments are created from a patient context.
+
+1. Open a patient’s History: `/patients/:id/history`.
+2. Click **+ New Assessment**.
+3. Select an **Assessment Type** (this controls which sections show in the form).
+4. Fill in the assessment details and submit.
+
+Notes:
+
+- Assessment “type” is currently a UI concept (used to show/hide sections). It is not stored in the backend assessment DTO, so the backend will not return a type value unless the backend is extended.
+
+### 4) Nurse “Done” Decision (Required Before Report Generation)
+
+In **Patient History**, each assessment row has a **Done** checkbox.
+
+- Use **Done** to mark that the nurse has finished reviewing/deciding that assessment.
+- The Daily Combined Report can only be generated when **all assessments for the selected date** are marked **Done**.
+
+Important:
+
+- Done state is stored in the browser using `localStorage` (per patient). It will not automatically sync between devices/browsers.
+
+### 5) Generate the Daily Combined Report (Main Reporting Flow)
+
+This is the intended workflow to generate AI output.
+
+1. Go to **Patient History**: `/patients/:id/history`.
+2. In the **Assessment History** header, choose a **date**.
+3. Mark **Done** for every assessment on that date.
+4. Click **Generate Daily Report**.
+
+You will get a combined report that:
+
+- Includes **all assessments** on that date (chronological order)
+- Shows a summary section (ranges)
+- Includes each assessment’s AI report text
+
+The report modal supports:
+
+- **Copy** (copies a clean text version)
+- **Regenerate**
+- **Save** (downloads a `.md` file)
+
+### 6) About Individual Assessment Report Pages
+
+The route `/assessments/:id/report` is now display-only:
+
+- It does **not** generate an AI report.
+- It only displays an AI report if one is already present on the assessment.
+
+If no AI report is present, use the Patient History daily report flow.
+
 ## Tech Stack
 
 - React 18 (Create React App)
@@ -77,7 +146,9 @@ You can change the base URL in [src/services/api.js](src/services/api.js).
 	- `POST /Patients`
 - Assessments
 	- `POST /Assessments`
-	- `GET /Assessments/{id}/report`
+	- `GET /Assessments/{id}`
+	- `GET /Assessments/{id}/report` (used only when generating Daily Combined Report)
+	- `GET /Patients/{id}/assessments`
 
 ### API Payload Contracts
 

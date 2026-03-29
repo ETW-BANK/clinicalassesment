@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import patientService from '../../services/patientService';
 import assessmentService from '../../services/assessmentService';
@@ -10,10 +10,9 @@ const PatientHistory = () => {
   const [patient, setPatient] = useState(null);
   const [allAssessments, setAllAssessments] = useState([]);
   const [filteredAssessments, setFilteredAssessments] = useState([]);
-  const [selectedAssessment, setSelectedAssessment] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showDailyModal, setShowDailyModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadingReport, setLoadingReport] = useState(false);
+  const [loadingDailyReport, setLoadingDailyReport] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilterType, setDateFilterType] = useState('preset');
   const [presetDate, setPresetDate] = useState('all');
@@ -22,7 +21,16 @@ const PatientHistory = () => {
   const [endDate, setEndDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [dailyReportDateKey, setDailyReportDateKey] = useState('');
+  const [dailyReportText, setDailyReportText] = useState('');
+  const [dailyReportError, setDailyReportError] = useState('');
+  const [doneByAssessmentId, setDoneByAssessmentId] = useState({});
   const navigate = useNavigate();
+
+  const doneStorageKey = useMemo(() => {
+    const patientId = String(id || '').trim();
+    return patientId ? `patient-assessment-frontend:historyDone:${patientId}` : 'patient-assessment-frontend:historyDone:unknown';
+  }, [id]);
 
   useEffect(() => {
     loadPatientAndAssessments();
@@ -31,6 +39,16 @@ const PatientHistory = () => {
   useEffect(() => {
     filterAssessments();
   }, [searchTerm, presetDate, singleDate, startDate, endDate, dateFilterType, statusFilter, allAssessments]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(doneStorageKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      setDoneByAssessmentId(parsed && typeof parsed === 'object' ? parsed : {});
+    } catch {
+      setDoneByAssessmentId({});
+    }
+  }, [doneStorageKey]);
 
   const loadPatientAndAssessments = async () => {
     try {
@@ -46,6 +64,21 @@ const PatientHistory = () => {
       
       setAllAssessments(patientAssessments);
       setFilteredAssessments(patientAssessments);
+
+      setDoneByAssessmentId((prev) => {
+        const next = {};
+        const current = prev && typeof prev === 'object' ? prev : {};
+        patientAssessments.forEach((a) => {
+          if (!a?.id) return;
+          if (current[a.id]) next[a.id] = true;
+        });
+        try {
+          localStorage.setItem(doneStorageKey, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
       
     } catch (error) {
       console.error('Error loading patient data:', error);
@@ -55,6 +88,23 @@ const PatientHistory = () => {
     }
   };
 
+  const isDone = (assessmentId) => Boolean(assessmentId && doneByAssessmentId && doneByAssessmentId[assessmentId]);
+
+  const setDone = (assessmentId, done) => {
+    if (!assessmentId) return;
+    setDoneByAssessmentId((prev) => {
+      const current = prev && typeof prev === 'object' ? prev : {};
+      const next = { ...current, [assessmentId]: Boolean(done) };
+      if (!done) delete next[assessmentId];
+      try {
+        localStorage.setItem(doneStorageKey, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -62,6 +112,37 @@ const PatientHistory = () => {
     } catch (e) {
       return dateString;
     }
+  };
+
+  const getVitals = (assessment) => assessment?.vitals || assessment?.vitalSigns || assessment?.vitalSignsAssessment || null;
+  const getRespiratory = (assessment) => assessment?.respiratory || null;
+  const getInterventions = (assessment) => assessment?.interventions || null;
+  const getSkin = (assessment) => assessment?.skin || null;
+  const getMusculoskeletal = (assessment) => assessment?.musculoskeletal || assessment?.mobility?.musculoskeletal || null;
+
+  const getDateKey = (dateString) => {
+    if (!dateString) return null;
+    const d = new Date(dateString);
+    if (Number.isNaN(d.getTime())) return null;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const formatDateKeyForDisplay = (dateKey) => {
+    if (!dateKey) return 'N/A';
+    const [yyyy, mm, dd] = String(dateKey).split('-');
+    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    if (Number.isNaN(d.getTime())) return dateKey;
+    return d.toLocaleDateString();
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const replacePatientIdWithName = (text, patientInfo) => {
@@ -75,39 +156,27 @@ const PatientHistory = () => {
     
     let updatedText = text;
     
-    // Replace the patient ID with the full name
     if (patientId) {
       const regex = new RegExp(patientId, 'gi');
       updatedText = updatedText.replace(regex, patientName);
     }
     
-    // Replace "Patient Identification:" with "Patient Name:"
     updatedText = updatedText.replace(/Patient Identification:/gi, 'Patient Name:');
     updatedText = updatedText.replace(/Patient ID:/gi, 'Patient Name:');
-    
-    // Replace true/false with Yes/No
     updatedText = updatedText.replace(/\btrue\b/gi, 'Yes');
     updatedText = updatedText.replace(/\bfalse\b/gi, 'No');
     
     return updatedText;
   };
 
-  // Function to clean markdown for copying
   const cleanMarkdownForCopy = (text) => {
     return text
-      // Remove bold markdown **text** -> text
       .replace(/\*\*(.*?)\*\*/g, '$1')
-      // Remove italic markdown *text* -> text
       .replace(/\*(.*?)\*/g, '$1')
-      // Remove heading markers (#, ##, etc.)
       .replace(/^#{1,6}\s+/gm, '')
-      // Replace bullet points (* or -) with • symbol
       .replace(/^[\*\-]\s+/gm, '• ')
-      // Remove any remaining asterisks
       .replace(/\*/g, '')
-      // Replace multiple newlines with double newline
       .replace(/\n{3,}/g, '\n\n')
-      // Trim whitespace
       .trim();
   };
 
@@ -117,12 +186,11 @@ const PatientHistory = () => {
     if (searchTerm) {
       filtered = filtered.filter(assessment => 
         assessment.nurseNotes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        assessment.vitals?.bloodPressure?.includes(searchTerm) ||
-        assessment.respiratory?.lungSounds?.toLowerCase().includes(searchTerm.toLowerCase())
+        getVitals(assessment)?.bloodPressure?.includes(searchTerm) ||
+        String(getRespiratory(assessment)?.lungSounds || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
-    // Date filtering
     if (dateFilterType === 'preset') {
       if (presetDate !== 'all') {
         const now = new Date();
@@ -181,12 +249,13 @@ const PatientHistory = () => {
     
     if (statusFilter !== 'all') {
       filtered = filtered.filter(assessment => {
+        const vitals = getVitals(assessment);
         const isCritical = 
-          (assessment.vitals?.spO2 && assessment.vitals.spO2 < 90) ||
-          (assessment.vitals?.pulseRate && assessment.vitals.pulseRate > 120) ||
-          (assessment.vitals?.pulseRate && assessment.vitals.pulseRate < 60) ||
-          (assessment.vitals?.respiratoryRate && assessment.vitals.respiratoryRate > 24) ||
-          (assessment.vitals?.respiratoryRate && assessment.vitals.respiratoryRate < 12);
+          (vitals?.spO2 && vitals.spO2 < 90) ||
+          (vitals?.pulseRate && vitals.pulseRate > 120) ||
+          (vitals?.pulseRate && vitals.pulseRate < 60) ||
+          (vitals?.respiratoryRate && vitals.respiratoryRate > 24) ||
+          (vitals?.respiratoryRate && vitals.respiratoryRate < 12);
         
         return statusFilter === 'critical' ? isCritical : !isCritical;
       });
@@ -203,146 +272,6 @@ const PatientHistory = () => {
     setEndDate('');
   };
 
-  const clearDateFilters = () => {
-    setDateFilterType('preset');
-    setPresetDate('all');
-    setSingleDate('');
-    setStartDate('');
-    setEndDate('');
-  };
-
-  const handleViewReport = async (assessment) => {
-    setLoadingReport(true);
-    setShowModal(true);
-    try {
-      console.log('Fetching report for assessment ID:', assessment.id);
-      const report = await assessmentService.getAssessmentReport(assessment.id);
-      console.log('Report loaded:', report);
-      
-      // Store patient info along with the report
-      setSelectedAssessment({ 
-        ...assessment, 
-        report,
-        patientInfo: patient // Pass the current patient data
-      });
-    } catch (error) {
-      console.error('Error loading report:', error);
-      toast.error('Failed to load assessment report');
-      setShowModal(false);
-    } finally {
-      setLoadingReport(false);
-    }
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedAssessment(null);
-  };
-
-  const copyReportToClipboard = async () => {
-    if (!selectedAssessment?.report?.reportText) {
-      toast.error('No report content to copy');
-      return;
-    }
-
-    try {
-      // Get the report text and replace patient ID with name
-      let cleanReport = selectedAssessment.report.reportText;
-      const patientInfo = selectedAssessment.patientInfo || patient;
-      
-      // Replace patient ID with name
-      if (patientInfo && patientInfo.id) {
-        const patientName = patientInfo.fullName || 
-                           `${patientInfo.firstName} ${patientInfo.lastName}` || 
-                           'Patient';
-        const patientId = patientInfo.id;
-        const regex = new RegExp(patientId, 'gi');
-        cleanReport = cleanReport.replace(regex, patientName);
-      }
-      
-      // Replace "Patient Identification:" with "Patient Name:"
-      cleanReport = cleanReport.replace(/Patient Identification:/gi, 'Patient Name:');
-      cleanReport = cleanReport.replace(/Patient ID:/gi, 'Patient Name:');
-      
-      // Replace true/false with Yes/No
-      cleanReport = cleanReport.replace(/\btrue\b/gi, 'Yes');
-      cleanReport = cleanReport.replace(/\bfalse\b/gi, 'No');
-      
-      // Clean markdown formatting
-      cleanReport = cleanMarkdownForCopy(cleanReport);
-      
-      // Add header and footer
-      const header = `PATIENT CLINICAL ASSESSMENT REPORT\n${'='.repeat(50)}\n\n`;
-      const footer = `\n\n${'='.repeat(50)}\nReport generated on: ${new Date().toLocaleString()}\n`;
-      
-      const finalReport = header + cleanReport + footer;
-      
-      await navigator.clipboard.writeText(finalReport);
-      toast.success('✓ Report copied to clipboard!');
-    } catch (err) {
-      console.error('Failed to copy:', err);
-      toast.error('Failed to copy report. Please try again.');
-    }
-  };
-
-  const getVitalSignsSummary = (assessment) => {
-    if (!assessment.vitals) return 'No vital signs recorded';
-    
-    const vitals = [];
-    if (assessment.vitals.bloodPressure) vitals.push(`BP: ${assessment.vitals.bloodPressure}`);
-    if (assessment.vitals.pulseRate && assessment.vitals.pulseRate !== 0) vitals.push(`Pulse: ${assessment.vitals.pulseRate}`);
-    if (assessment.vitals.respiratoryRate && assessment.vitals.respiratoryRate !== 0) vitals.push(`RR: ${assessment.vitals.respiratoryRate}`);
-    if (assessment.vitals.spO2 && assessment.vitals.spO2 !== 0) vitals.push(`SpO2: ${assessment.vitals.spO2}%`);
-    if (assessment.vitals.temperature && assessment.vitals.temperature !== 0) vitals.push(`Temp: ${assessment.vitals.temperature}°C`);
-    
-    return vitals.length > 0 ? vitals.join(' | ') : 'No vital signs recorded';
-  };
-
-  const getSkinSummary = (assessment) => {
-    if (!assessment.skin) return 'Not assessed';
-    
-    const skinConditions = [];
-    if (assessment.skin.warm) skinConditions.push('Warm');
-    if (assessment.skin.dry) skinConditions.push('Dry');
-    if (assessment.skin.pale) skinConditions.push('Pale');
-    if (assessment.skin.cool) skinConditions.push('Cool');
-    if (assessment.skin.hot) skinConditions.push('Hot');
-    if (assessment.skin.flushed) skinConditions.push('Flushed');
-    if (assessment.skin.cyanotic) skinConditions.push('Cyanotic');
-    if (assessment.skin.clammy) skinConditions.push('Clammy');
-    if (assessment.skin.jaundice) skinConditions.push('Jaundice');
-    if (assessment.skin.diaphoretic) skinConditions.push('Diaphoretic');
-    
-    return skinConditions.length > 0 ? skinConditions.join(', ') : 'Normal';
-  };
-
-  const getMobilitySummary = (assessment) => {
-    if (!assessment.mobility) return 'Not assessed';
-    
-    const mobility = [];
-    if (assessment.mobility.gaitSteady) mobility.push('Steady Gait');
-    if (assessment.mobility.usesCane) mobility.push('Cane');
-    if (assessment.mobility.usesCrutches) mobility.push('Crutches');
-    if (assessment.mobility.usesWheelchair) mobility.push('Wheelchair');
-    if (assessment.mobility.bedridden) mobility.push('Bedridden');
-    if (assessment.mobility.requiresAssistance) mobility.push('Needs Assistance');
-    
-    return mobility.length > 0 ? mobility.join(', ') : 'Independent';
-  };
-
-  const getStatusBadge = (assessment) => {
-    if (!assessment.vitals) return 'neutral';
-    
-    const hasCritical = 
-      (assessment.vitals.spO2 && assessment.vitals.spO2 < 90) ||
-      (assessment.vitals.pulseRate && assessment.vitals.pulseRate > 120) ||
-      (assessment.vitals.pulseRate && assessment.vitals.pulseRate < 60) ||
-      (assessment.vitals.respiratoryRate && assessment.vitals.respiratoryRate > 24) ||
-      (assessment.vitals.respiratoryRate && assessment.vitals.respiratoryRate < 12);
-    
-    return hasCritical ? 'critical' : 'stable';
-  };
-
   const clearFilters = () => {
     setSearchTerm('');
     setDateFilterType('preset');
@@ -351,6 +280,271 @@ const PatientHistory = () => {
     setStartDate('');
     setEndDate('');
     setStatusFilter('all');
+  };
+
+  const closeDailyModal = () => {
+    setShowDailyModal(false);
+    setDailyReportDateKey('');
+    setDailyReportText('');
+    setDailyReportError('');
+    setLoadingDailyReport(false);
+  };
+
+  const buildDailyCombinedReportMarkdown = ({ patientInfo, dateKey, items }) => {
+    const patientName =
+      patientInfo?.fullName ||
+      `${patientInfo?.firstName || ''} ${patientInfo?.lastName || ''}`.trim() ||
+      'Patient';
+
+    const assessments = [...items].sort((a, b) => {
+      const aTime = new Date(a.assessment.assessmentDate).getTime();
+      const bTime = new Date(b.assessment.assessmentDate).getTime();
+      return aTime - bTime;
+    });
+
+    const criticalCount = assessments.filter(({ assessment }) => getStatusBadge(assessment) === 'critical').length;
+
+    const numericValues = (val) => (typeof val === 'number' && !Number.isNaN(val) ? val : null);
+    const spO2Values = assessments.map(({ assessment }) => numericValues(assessment?.vitals?.spO2)).filter((v) => v !== null);
+    const pulseValues = assessments.map(({ assessment }) => numericValues(assessment?.vitals?.pulseRate)).filter((v) => v !== null);
+    const rrValues = assessments.map(({ assessment }) => numericValues(assessment?.vitals?.respiratoryRate)).filter((v) => v !== null);
+    const tempValues = assessments.map(({ assessment }) => numericValues(assessment?.vitals?.temperature)).filter((v) => v !== null);
+
+    const min = (arr) => (arr.length ? Math.min(...arr) : null);
+    const max = (arr) => (arr.length ? Math.max(...arr) : null);
+
+    const lines = [];
+    lines.push(`# Daily Clinical Assessment Report`);
+    lines.push('');
+    lines.push(`**Patient Name:** ${patientName}`);
+    lines.push(`**Date:** ${formatDateKeyForDisplay(dateKey)}`);
+    lines.push(`**Total Assessments:** ${assessments.length}`);
+    lines.push(`**Critical Assessments:** ${criticalCount}`);
+    lines.push('');
+    lines.push('## Summary');
+    lines.push('');
+    if (spO2Values.length) lines.push(`- SpO2 range: ${min(spO2Values)}% – ${max(spO2Values)}%`);
+    if (pulseValues.length) lines.push(`- Pulse range: ${min(pulseValues)} – ${max(pulseValues)} bpm`);
+    if (rrValues.length) lines.push(`- Respiratory rate range: ${min(rrValues)} – ${max(rrValues)} /min`);
+    if (tempValues.length) lines.push(`- Temperature range: ${min(tempValues)} – ${max(tempValues)} °C`);
+    if (!spO2Values.length && !pulseValues.length && !rrValues.length && !tempValues.length) {
+      lines.push('- Vital sign ranges unavailable (not recorded).');
+    }
+    lines.push('');
+    lines.push('## Assessments (Chronological)');
+
+    assessments.forEach(({ assessment, report }, idx) => {
+      const status = getStatusBadge(assessment);
+      const statusLabel = status === 'critical' ? 'Critical' : 'Stable';
+      const timeLabel = formatTime(assessment.assessmentDate) || formatDate(assessment.assessmentDate);
+
+      lines.push('');
+      lines.push(`### ${timeLabel} — ${statusLabel}`);
+      lines.push('');
+      lines.push(`**Vital Signs:** ${getVitalSignsSummary(assessment)}`);
+      lines.push(`**Skin:** ${getSkinSummary(assessment)}`);
+      lines.push(`**Mobility:** ${getMobilitySummary(assessment)}`);
+      if (assessment?.respiratory?.lungSounds) lines.push(`**Lung Sounds:** ${assessment.respiratory.lungSounds}`);
+      if (assessment?.nurseNotes) lines.push(`**Nurse Notes:** ${assessment.nurseNotes}`);
+
+      lines.push('');
+      lines.push(report?.reportText || '_No AI report text available._');
+
+      if (idx < assessments.length - 1) {
+        lines.push('');
+        lines.push('---');
+      }
+    });
+
+    lines.push('');
+    lines.push(`_Combined report generated on: ${new Date().toLocaleString()}_`);
+
+    return lines.join('\n');
+  };
+
+  const generateDailyCombinedReport = async (dateKey, { keepModalOpen } = {}) => {
+    const key = String(dateKey || '').trim();
+    if (!key) {
+      toast.error('Select a date to generate a daily report');
+      return;
+    }
+
+    const dayAssessments = allAssessments.filter((a) => getDateKey(a?.assessmentDate) === key);
+    if (dayAssessments.length === 0) {
+      toast.error('No assessments found for that date');
+      return;
+    }
+
+    const notDone = dayAssessments.filter((a) => !isDone(a?.id));
+    if (notDone.length > 0) {
+      toast.error(`Cannot generate daily report: ${notDone.length} assessment(s) not marked Done by the nurse`);
+      return;
+    }
+
+    setDailyReportDateKey(key);
+    setDailyReportError('');
+    setDailyReportText('');
+    setLoadingDailyReport(true);
+    if (!keepModalOpen) setShowDailyModal(true);
+
+    try {
+      const items = await Promise.all(
+        dayAssessments.map(async (assessment) => {
+          const report = await assessmentService.getAssessmentReport(assessment.id);
+          return { assessment, report };
+        })
+      );
+
+      const combinedMarkdown = buildDailyCombinedReportMarkdown({
+        patientInfo: patient,
+        dateKey: key,
+        items,
+      });
+
+      setDailyReportText(combinedMarkdown);
+      toast.success('Daily report generated');
+    } catch (error) {
+      console.error('Error generating daily combined report:', error);
+      setDailyReportError('Failed to generate daily report. Please try again.');
+      toast.error('Failed to generate daily report');
+    } finally {
+      setLoadingDailyReport(false);
+    }
+  };
+
+  const copyDailyReportToClipboard = async () => {
+    if (!dailyReportText) {
+      toast.error('No daily report content to copy');
+      return;
+    }
+
+    try {
+      const rendered = replacePatientIdWithName(dailyReportText, patient);
+      const clean = cleanMarkdownForCopy(rendered);
+      const header = `DAILY COMBINED ASSESSMENT REPORT\n${'='.repeat(50)}\n\n`;
+      const footer = `\n\n${'='.repeat(50)}\nReport generated on: ${new Date().toLocaleString()}\n`;
+      await navigator.clipboard.writeText(header + clean + footer);
+      toast.success('✓ Daily report copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy daily report:', err);
+      toast.error('Failed to copy daily report. Please try again.');
+    }
+  };
+
+  const saveDailyReportToFile = () => {
+    if (!dailyReportText) {
+      toast.error('No daily report content to save');
+      return;
+    }
+
+    try {
+      const patientName =
+        patient?.fullName ||
+        `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() ||
+        'patient';
+      const safeName = patientName.replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '_') || 'patient';
+      const safeDate = (dailyReportDateKey || 'date').replace(/[^0-9\-]/g, '');
+      const fileName = `daily_report_${safeName}_${safeDate}.md`;
+
+      const blob = new Blob([dailyReportText], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success('Daily report saved');
+    } catch (err) {
+      console.error('Failed to save daily report:', err);
+      toast.error('Failed to save daily report');
+    }
+  };
+
+  const getVitalSignsSummary = (assessment) => {
+    const vitalsData = getVitals(assessment);
+    if (!vitalsData) return 'No vital signs recorded';
+    
+    const vitalParts = [];
+    if (vitalsData.bloodPressure) vitalParts.push(`BP: ${vitalsData.bloodPressure}`);
+    if (vitalsData.pulseRate && vitalsData.pulseRate !== 0) vitalParts.push(`Pulse: ${vitalsData.pulseRate}`);
+    if (vitalsData.respiratoryRate && vitalsData.respiratoryRate !== 0) vitalParts.push(`RR: ${vitalsData.respiratoryRate}`);
+    if (vitalsData.spO2 && vitalsData.spO2 !== 0) vitalParts.push(`SpO2: ${vitalsData.spO2}%`);
+    if (vitalsData.temperature && vitalsData.temperature !== 0) vitalParts.push(`Temp: ${vitalsData.temperature}°C`);
+    if (vitalsData.oxygenLitersPerMinute && vitalsData.oxygenLitersPerMinute !== 0) {
+      vitalParts.push(`O2: ${vitalsData.oxygenLitersPerMinute} L/min`);
+    }
+    if (vitalsData.painScore !== undefined && vitalsData.painScore !== null && vitalsData.painScore !== 0) {
+      vitalParts.push(`Pain: ${vitalsData.painScore}/10`);
+    }
+    
+    return vitalParts.length > 0 ? vitalParts.join(' | ') : 'No vital signs recorded';
+  };
+
+  const getSkinSummary = (assessment) => {
+    const skin = getSkin(assessment);
+    if (!skin) return 'Not assessed';
+
+    if (Array.isArray(skin.conditions)) {
+      const conditions = skin.conditions.filter(Boolean);
+      if (skin.otherCondition) conditions.push(skin.otherCondition);
+      return conditions.length > 0 ? conditions.join(', ') : 'Normal';
+    }
+    
+    const skinConditions = [];
+    if (skin.warm) skinConditions.push('Warm');
+    if (skin.dry) skinConditions.push('Dry');
+    if (skin.pale) skinConditions.push('Pale');
+    if (skin.cool) skinConditions.push('Cool');
+    if (skin.hot) skinConditions.push('Hot');
+    if (skin.flushed) skinConditions.push('Flushed');
+    if (skin.cyanotic) skinConditions.push('Cyanotic');
+    if (skin.clammy) skinConditions.push('Clammy');
+    if (skin.jaundice) skinConditions.push('Jaundice');
+    if (skin.diaphoretic) skinConditions.push('Diaphoretic');
+    
+    return skinConditions.length > 0 ? skinConditions.join(', ') : 'Normal';
+  };
+
+  const getMobilitySummary = (assessment) => {
+    const ms = getMusculoskeletal(assessment);
+    if (ms) {
+      const parts = [];
+      if (ms.mobility) parts.push(String(ms.mobility));
+      if (Array.isArray(ms.devices) && ms.devices.length > 0) parts.push(`Devices: ${ms.devices.join(', ')}`);
+      if (ms.otherDevice) parts.push(`Other device: ${ms.otherDevice}`);
+      if (ms.otherMobility) parts.push(`Other: ${ms.otherMobility}`);
+      return parts.length > 0 ? parts.join(' | ') : 'Not assessed';
+    }
+
+    const mobilityObj = assessment?.mobility;
+    if (!mobilityObj) return 'Not assessed';
+    
+    const mobility = [];
+    if (mobilityObj.gaitSteady) mobility.push('Steady Gait');
+    if (mobilityObj.usesCane) mobility.push('Cane');
+    if (mobilityObj.usesCrutches) mobility.push('Crutches');
+    if (mobilityObj.usesWheelchair) mobility.push('Wheelchair');
+    if (mobilityObj.bedridden) mobility.push('Bedridden');
+    if (mobilityObj.requiresAssistance) mobility.push('Needs Assistance');
+    
+    return mobility.length > 0 ? mobility.join(', ') : 'Independent';
+  };
+
+  const getStatusBadge = (assessment) => {
+    const vitals = getVitals(assessment);
+    if (!vitals) return 'neutral';
+    
+    const hasCritical = 
+      (vitals.spO2 && vitals.spO2 < 90) ||
+      (vitals.pulseRate && vitals.pulseRate > 120) ||
+      (vitals.pulseRate && vitals.pulseRate < 60) ||
+      (vitals.respiratoryRate && vitals.respiratoryRate > 24) ||
+      (vitals.respiratoryRate && vitals.respiratoryRate < 12);
+    
+    return hasCritical ? 'critical' : 'stable';
   };
 
   if (loading) {
@@ -591,19 +785,65 @@ const PatientHistory = () => {
           {dateFilterType === 'single' && singleDate && ` on ${new Date(singleDate).toLocaleDateString()}`}
           {dateFilterType === 'range' && (startDate || endDate) && ' with date range'}
         </span>
-        {(searchTerm || dateFilterType !== 'preset' || presetDate !== 'all' || singleDate || startDate || endDate || statusFilter !== 'all') && (
-          <button onClick={clearFilters} style={styles.clearSearchButton}>
-            Clear all filters
-          </button>
-        )}
+        <div style={styles.resultsActions}>
+          {(searchTerm || dateFilterType !== 'preset' || presetDate !== 'all' || singleDate || startDate || endDate || statusFilter !== 'all') && (
+            <button onClick={clearFilters} style={styles.clearSearchButton}>
+              Clear all filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Assessment History Table */}
       <div style={styles.historySection}>
-        <h3 style={styles.sectionTitle}>
-          Assessment History 
-          <span style={styles.badge}>{filteredAssessments.length} / {allAssessments.length}</span>
-        </h3>
+        <div style={styles.sectionHeaderRow}>
+          <h3 style={styles.sectionTitle}>
+            Assessment History 
+            <span style={styles.badge}>{filteredAssessments.length} / {allAssessments.length}</span>
+          </h3>
+
+          {(() => {
+            const selectedKey = String(singleDate || '').trim();
+            const dayAssessments = selectedKey
+              ? allAssessments.filter((a) => getDateKey(a?.assessmentDate) === selectedKey)
+              : [];
+            const notDoneCount = dayAssessments.filter((a) => !isDone(a?.id)).length;
+            const disabled = !selectedKey || dayAssessments.length === 0 || notDoneCount > 0;
+            const label = !selectedKey
+              ? 'Select date to generate the report'
+              : dayAssessments.length === 0
+                ? 'No assessments for date'
+                : notDoneCount > 0
+                  ? `Mark ${notDoneCount} assessment(s) Done`
+                  : 'Generate Daily Report';
+
+            return (
+              <div style={styles.dailyReportControls}>
+                <input
+                  type="date"
+                  value={singleDate}
+                  onChange={(e) => {
+                    setDateFilterType('single');
+                    setSingleDate(e.target.value);
+                  }}
+                  style={styles.dailyReportDateInput}
+                  aria-label="Daily report date"
+                />
+                <button
+                  onClick={() => generateDailyCombinedReport(singleDate)}
+                  style={{
+                    ...styles.dailyReportButton,
+                    ...(disabled ? styles.dailyReportButtonDisabled : {}),
+                  }}
+                  disabled={disabled || loadingDailyReport}
+                  title={disabled ? label : 'Combine all assessments for this date'}
+                >
+                  {loadingDailyReport ? 'Generating...' : `🗓️ ${label}`}
+                </button>
+              </div>
+            );
+          })()}
+        </div>
         
         {filteredAssessments.length === 0 ? (
           <div style={styles.emptyState}>
@@ -621,8 +861,8 @@ const PatientHistory = () => {
                   <th style={styles.th}>Vital Signs</th>
                   <th style={styles.th}>Skin</th>
                   <th style={styles.th}>Mobility</th>
-                  <th style={styles.th}>Actions</th>
-                </tr>
+                  <th style={styles.th}>Done</th>
+                 </tr>
               </thead>
               <tbody>
                 {filteredAssessments.map((assessment) => {
@@ -639,16 +879,16 @@ const PatientHistory = () => {
                         {getVitalSignsSummary(assessment)}
                         <div style={styles.interventions}>
                           <strong>Interventions:</strong>{' '}
-                          {assessment.vitals?.oxygenGiven && 'Oxygen '}
-                          {assessment.vitals?.ivStarted && 'IV '}
-                          {assessment.vitals?.cprPerformed && 'CPR'}
-                          {!assessment.vitals?.oxygenGiven && 
-                           !assessment.vitals?.ivStarted && 
-                           !assessment.vitals?.cprPerformed && 'None'}
+                          {getVitals(assessment)?.oxygenGiven && 'Oxygen '}
+                          {getInterventions(assessment)?.ivStarted && 'IV '}
+                          {getInterventions(assessment)?.cprPerformed && 'CPR'}
+                          {!getVitals(assessment)?.oxygenGiven && 
+                           !getInterventions(assessment)?.ivStarted && 
+                           !getInterventions(assessment)?.cprPerformed && 'None'}
                         </div>
-                        {assessment.respiratory?.lungSounds && (
+                        {getRespiratory(assessment)?.lungSounds && (
                           <div style={styles.interventions}>
-                            <strong>Lung Sounds:</strong> {assessment.respiratory.lungSounds}
+                            <strong>Lung Sounds:</strong> {String(getRespiratory(assessment).lungSounds)}
                           </div>
                         )}
                         {assessment.nurseNotes && (
@@ -664,13 +904,14 @@ const PatientHistory = () => {
                         {getMobilitySummary(assessment)}
                       </td>
                       <td style={styles.td}>
-                        <button
-                          onClick={() => handleViewReport(assessment)}
-                          style={styles.viewButton}
-                          disabled={loadingReport}
-                        >
-                          View AI Report
-                        </button>
+                        <label style={styles.doneLabel}>
+                          <input
+                            type="checkbox"
+                            checked={isDone(assessment.id)}
+                            onChange={(e) => setDone(assessment.id, e.target.checked)}
+                          />
+                          Done
+                        </label>
                       </td>
                     </tr>
                   );
@@ -681,72 +922,76 @@ const PatientHistory = () => {
         )}
       </div>
 
-      {/* Modal Popup for AI Report */}
-      {showModal && (
-        <div style={styles.modalOverlay} onClick={closeModal}>
+      {/* Modal Popup for Daily Combined Report */}
+      {showDailyModal && (
+        <div style={styles.modalOverlay} onClick={closeDailyModal}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>
-                Clinical Assessment Report
-                {selectedAssessment && (
+                Daily Combined Report
+                {dailyReportDateKey && (
                   <span style={styles.modalSubtitle}>
-                    {formatDate(selectedAssessment.assessmentDate)}
+                    {formatDateKeyForDisplay(dailyReportDateKey)}
                   </span>
                 )}
               </h3>
-              <button onClick={closeModal} style={styles.modalClose}>
+              <button onClick={closeDailyModal} style={styles.modalClose}>
                 ×
               </button>
             </div>
-            
+
             <div style={styles.modalBody}>
-              {loadingReport ? (
+              {loadingDailyReport ? (
                 <div style={styles.modalLoading}>
                   <div style={styles.spinner}></div>
-                  <p>Generating report...</p>
+                  <p>Generating daily report...</p>
                 </div>
-              ) : selectedAssessment?.report ? (
-                <>
-                  <div style={styles.modalReportText}>
-                    <ReactMarkdown>
-                      {replacePatientIdWithName(
-                        selectedAssessment.report.reportText,
-                        selectedAssessment.patientInfo || patient
-                      )}
-                    </ReactMarkdown>
-                  </div>
-                  {selectedAssessment.report.generatedAt && (
-                    <div style={styles.modalFooter}>
-                      <strong>Generated:</strong> {formatDate(selectedAssessment.report.generatedAt)}
-                    </div>
-                  )}
-                </>
-              ) : (
+              ) : dailyReportError ? (
                 <div style={styles.modalError}>
-                  <p>Failed to load report. Please try again.</p>
-                  <button 
-                    onClick={() => handleViewReport(selectedAssessment)}
+                  <p>{dailyReportError}</p>
+                  <button
+                    onClick={() => generateDailyCombinedReport(dailyReportDateKey, { keepModalOpen: true })}
                     style={styles.retryButton}
                   >
                     Retry
                   </button>
                 </div>
+              ) : dailyReportText ? (
+                <div style={styles.modalReportText}>
+                  <ReactMarkdown>
+                    {replacePatientIdWithName(dailyReportText, patient)}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <div style={styles.modalError}>
+                  <p>No daily report available.</p>
+                </div>
               )}
             </div>
-            
+
             <div style={styles.modalActions}>
-              <button onClick={copyReportToClipboard} style={styles.copyButton}>
-                📋 Copy Report
+              <button
+                onClick={copyDailyReportToClipboard}
+                style={styles.copyButton}
+                disabled={!dailyReportText}
+              >
+                📋 Copy
               </button>
-              {selectedAssessment?.report && (
-                <button 
-                  onClick={() => window.print()}
-                  style={styles.printButton}
-                >
-                  🖨️ Print Report
-                </button>
-              )}
-              <button onClick={closeModal} style={styles.modalButton}>
+              <button
+                onClick={() => generateDailyCombinedReport(dailyReportDateKey, { keepModalOpen: true })}
+                style={styles.printButton}
+                disabled={!dailyReportDateKey || loadingDailyReport}
+              >
+                🔄 Regenerate
+              </button>
+              <button
+                onClick={saveDailyReportToFile}
+                style={styles.modalButton}
+                disabled={!dailyReportText}
+              >
+                💾 Save
+              </button>
+              <button onClick={closeDailyModal} style={styles.modalButton}>
                 Close
               </button>
             </div>
@@ -757,7 +1002,6 @@ const PatientHistory = () => {
   );
 };
 
-// Styles remain the same as before
 const styles = {
   container: {
     maxWidth: '1400px',
@@ -956,6 +1200,11 @@ const styles = {
     color: 'rgba(255,255,255,0.9)',
     fontSize: '0.875rem',
   },
+  resultsActions: {
+    display: 'flex',
+    gap: '0.75rem',
+    alignItems: 'center',
+  },
   clearSearchButton: {
     background: 'rgba(255,255,255,0.2)',
     border: 'none',
@@ -966,6 +1215,31 @@ const styles = {
     fontSize: '0.75rem',
     transition: 'all 0.2s ease',
   },
+  dailyReportButton: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    border: 'none',
+    color: 'white',
+    padding: '0.6rem 1rem',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap',
+    boxShadow: '0 6px 14px rgba(0,0,0,0.12)',
+  },
+  dailyReportButtonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  dailyReportDateInput: {
+    padding: '0.55rem 0.75rem',
+    borderRadius: '10px',
+    border: '1px solid #ddd',
+    backgroundColor: '#fff',
+    fontSize: '0.95rem',
+    height: '40px',
+  },
   historySection: {
     background: 'white',
     borderRadius: '16px',
@@ -973,15 +1247,29 @@ const styles = {
     boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
     overflow: 'hidden',
   },
+  sectionHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1rem',
+    flexWrap: 'wrap',
+    marginBottom: '1.5rem',
+  },
   sectionTitle: {
     marginTop: 0,
-    marginBottom: '1.5rem',
+    marginBottom: 0,
     color: '#2c3e50',
     fontSize: '1.2rem',
     fontWeight: '600',
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
+  },
+  dailyReportControls: {
+    display: 'flex',
+    gap: '0.5rem',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   badge: {
     backgroundColor: '#3498db',
@@ -1039,15 +1327,13 @@ const styles = {
     color: '#666',
     marginTop: '0.25rem',
   },
-  viewButton: {
-    padding: '0.5rem 1rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
+  doneLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
     fontSize: '0.875rem',
-    transition: 'all 0.3s ease',
+    color: '#2c3e50',
+    userSelect: 'none',
   },
   loadingContainer: {
     display: 'flex',
@@ -1227,45 +1513,5 @@ const styles = {
     cursor: 'pointer',
   },
 };
-
-// Add keyframes for animations
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  
-  @keyframes slideUp {
-    from {
-      transform: translateY(50px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-  }
-  
-  tr:hover {
-    background-color: #f8f9fa;
-  }
-  
-  .modal-close:hover {
-    color: #e74c3c;
-    transform: scale(1.1);
-  }
-`;
-document.head.appendChild(styleSheet);
 
 export default PatientHistory;

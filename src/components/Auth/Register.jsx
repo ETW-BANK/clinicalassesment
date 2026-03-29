@@ -47,18 +47,18 @@ const Register = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <div style={styles.logo}>📝</div>
-          <h1 style={styles.title}>Create Account</h1>
-          <p style={styles.subtitle}>Join us to start managing patient assessments</p>
+    <div className="register-container">
+      <div className="register-card">
+        <div className="register-header">
+          <div className="register-logo">📝</div>
+          <h1 className="register-title">Create Account</h1>
+          <p className="register-subtitle">Join us to start managing patient assessments</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              <span style={styles.labelIcon}>👤</span>
+        <form onSubmit={handleSubmit} className="register-form">
+          <div className="form-group">
+            <label className="form-label">
+              <span className="label-icon">👤</span>
               Full Name
             </label>
             <input
@@ -67,14 +67,14 @@ const Register = () => {
               value={formData.name}
               onChange={handleChange}
               required
-              style={styles.input}
+              className="form-input"
               placeholder="Enter your full name"
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              <span style={styles.labelIcon}>📧</span>
+          <div className="form-group">
+            <label className="form-label">
+              <span className="label-icon">📧</span>
               Email Address
             </label>
             <input
@@ -83,14 +83,14 @@ const Register = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              style={styles.input}
+              className="form-input"
               placeholder="Enter your email"
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              <span style={styles.labelIcon}>🔒</span>
+          <div className="form-group">
+            <label className="form-label">
+              <span className="label-icon">🔒</span>
               Password
             </label>
             <input
@@ -99,14 +99,14 @@ const Register = () => {
               value={formData.password}
               onChange={handleChange}
               required
-              style={styles.input}
+              className="form-input"
               placeholder="Create a password"
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              <span style={styles.labelIcon}>✓</span>
+          <div className="form-group">
+            <label className="form-label">
+              <span className="label-icon">✓</span>
               Confirm Password
             </label>
             <input
@@ -115,15 +115,15 @@ const Register = () => {
               value={formData.confirmPassword}
               onChange={handleChange}
               required
-              style={styles.input}
+              className="form-input"
               placeholder="Confirm your password"
             />
           </div>
 
-          <button type="submit" disabled={loading} style={styles.button}>
+          <button type="submit" disabled={loading} className="register-button">
             {loading ? (
               <>
-                <span style={styles.spinner}></span>
+                <span className="spinner-sm"></span>
                 Creating account...
               </>
             ) : (
@@ -132,153 +132,219 @@ const Register = () => {
           </button>
         </form>
 
-        <div style={styles.footer}>
-          <p style={styles.loginLink}>
+        <div className="register-footer">
+          <p className="register-link-text">
             Already have an account? <Link to="/login">Sign in</Link>
           </p>
         </div>
       </div>
+
+      <style>{`
+        .register-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: calc(100vh - 70px);
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 2rem;
+        }
+
+        .register-card {
+          background-color: white;
+          border-radius: 24px;
+          padding: 2.5rem;
+          width: 100%;
+          max-width: 450px;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          animation: slideUp 0.5s ease;
+        }
+
+        .register-header {
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+
+        .register-logo {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+        }
+
+        .register-title {
+          font-size: 1.8rem;
+          color: #2c3e50;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+        }
+
+        .register-subtitle {
+          color: #7f8c8d;
+          font-size: 0.9rem;
+        }
+
+        .register-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .label-icon {
+          font-size: 1rem;
+        }
+
+        .register-button {
+          padding: 0.875rem;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          margin-top: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .register-button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .register-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .register-footer {
+          margin-top: 2rem;
+          text-align: center;
+          padding-top: 1rem;
+          border-top: 1px solid #f0f0f0;
+        }
+
+        .register-link-text {
+          color: #7f8c8d;
+          font-size: 0.9rem;
+        }
+
+        .register-link-text a {
+          color: #667eea;
+          text-decoration: none;
+          font-weight: 500;
+        }
+
+        .register-link-text a:hover {
+          text-decoration: underline;
+        }
+
+        /* Form Input Styles */
+        .form-group {
+          margin-bottom: 0;
+        }
+
+        .form-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+          color: #2c3e50;
+          font-size: 0.9rem;
+        }
+
+        .form-input {
+          width: 100%;
+          padding: 0.875rem 1rem;
+          border: 2px solid #e0e0e0;
+          border-radius: 12px;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          outline: none;
+          font-family: inherit;
+        }
+
+        .form-input:focus {
+          border-color: #667eea;
+          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+          transform: translateY(-1px);
+        }
+
+        .spinner-sm {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255,255,255,0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.6s linear infinite;
+          display: inline-block;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideUp {
+          from {
+            transform: translateY(30px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .register-container {
+            padding: 1rem;
+          }
+
+          .register-card {
+            padding: 1.5rem;
+          }
+
+          .register-title {
+            font-size: 1.5rem;
+          }
+
+          .register-logo {
+            font-size: 2.5rem;
+          }
+
+          .form-input {
+            padding: 0.75rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .register-card {
+            padding: 1.25rem;
+          }
+
+          .register-title {
+            font-size: 1.3rem;
+          }
+
+          .register-subtitle {
+            font-size: 0.8rem;
+          }
+
+          .register-button {
+            padding: 0.75rem;
+            font-size: 0.9rem;
+          }
+
+          .form-input {
+            padding: 0.625rem;
+            font-size: 0.9rem;
+          }
+        }
+      `}</style>
     </div>
   );
 };
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 'calc(100vh - 70px)',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '2rem',
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: '24px',
-    padding: '2.5rem',
-    width: '100%',
-    maxWidth: '450px',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-    animation: 'slideUp 0.5s ease',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '2rem',
-  },
-  logo: {
-    fontSize: '3rem',
-    marginBottom: '1rem',
-  },
-  title: {
-    fontSize: '1.8rem',
-    color: '#2c3e50',
-    marginBottom: '0.5rem',
-    fontWeight: '600',
-  },
-  subtitle: {
-    color: '#7f8c8d',
-    fontSize: '0.9rem',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  label: {
-    fontWeight: '600',
-    color: '#2c3e50',
-    fontSize: '0.9rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  labelIcon: {
-    fontSize: '1rem',
-  },
-  input: {
-    padding: '0.875rem 1rem',
-    border: '2px solid #e0e0e0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-    fontFamily: 'inherit',
-  },
-  button: {
-    padding: '0.875rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    marginTop: '1rem',
-  },
-  spinner: {
-    width: '16px',
-    height: '16px',
-    border: '2px solid rgba(255,255,255,0.3)',
-    borderTopColor: 'white',
-    borderRadius: '50%',
-    animation: 'spin 0.6s linear infinite',
-    display: 'inline-block',
-    marginRight: '0.5rem',
-  },
-  footer: {
-    marginTop: '2rem',
-    textAlign: 'center',
-    paddingTop: '1rem',
-    borderTop: '1px solid #f0f0f0',
-  },
-  loginLink: {
-    color: '#7f8c8d',
-    fontSize: '0.9rem',
-  },
-};
-
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
-  input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-  
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  }
-  
-  a {
-    color: #667eea;
-    text-decoration: none;
-    font-weight: 500;
-  }
-  
-  a:hover {
-    text-decoration: underline;
-  }
-`;
-document.head.appendChild(styleSheet);
 
 export default Register;

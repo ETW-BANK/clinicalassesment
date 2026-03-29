@@ -1,674 +1,569 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+// components/AssessmentForm.jsx
+import React, { useState } from 'react';
 import assessmentService from '../../services/assessmentService';
-import patientService from '../../services/patientService';
-import toast from 'react-hot-toast';
+import { ASSESSMENT_TYPE_CONFIG } from './AssessmentTypeSelector';
 
-const AssessmentForm = () => {
-  const [searchParams] = useSearchParams();
-  const patientId = searchParams.get('patientId');
-  
+const AssessmentForm = ({ patientId, assessmentType, onSuccess, onCancel }) => {
+  const normalizedType = String(assessmentType || '').trim().toLowerCase();
+  const typeConfig = ASSESSMENT_TYPE_CONFIG[normalizedType] || ASSESSMENT_TYPE_CONFIG.standard;
+  const enabledSections = typeConfig?.sections || ASSESSMENT_TYPE_CONFIG.standard.sections;
+  const hasSection = (sectionId) => enabledSections.includes(sectionId);
+
   const [formData, setFormData] = useState({
-    patientId: patientId || '',
+    patientId: patientId,
     nurseNotes: '',
-    assessmentDate: new Date().toISOString().split('T')[0],
-    vitals: {
-      bloodPressure: '',
-      pulseRate: null,
-      respiratoryRate: null,
-      temperature: null,
-      spO2: null,
-      oxygenSaturation: null,
-      oxygenGiven: false,
-      ivStarted: false,
-      cprPerformed: false,
-    },
-    neuro: {
-      isAlert: true,
-      isOriented: true,
-    },
-    skin: {
-      warm: false,
-      dry: false,
-      pale: false,
-      cool: false,
-      hot: false,
-      flushed: false,
-      cyanotic: false,
-      clammy: false,
-      jaundice: false,
-      diaphoretic: false,
-    },
-    respiratory: {
-      symmetrical: true,
-      asymmetrical: false,
-      lungSounds: '',
-    },
-    mobility: {
-      gaitSteady: false,
-      usesCane: false,
-      usesCrutches: false,
-      usesWheelchair: false,
-      bedridden: false,
-      requiresAssistance: false,
-    },
+    
+    // Vital Signs
+    bloodPressure: '',
+    pulseRate: '',
+    respiratoryRate: '',
+    spO2: '',
+    temperature: '',
+    oxygenLitersPerMinute: '',
+    painScore: '',
+    
+    // Interventions
+    oxygenGiven: false,
+    ivStarted: false,
+    cprPerformed: false,
+    
+    // Neurological
+    isAlert: true,
+    isOriented: true,
+    
+    // Skin Conditions
+    skinWarm: false,
+    skinDry: false,
+    skinPale: false,
+    skinCool: false,
+    skinHot: false,
+    skinFlushed: false,
+    skinCyanotic: false,
+    skinClammy: false,
+    skinJaundice: false,
+    skinDiaphoretic: false,
+    otherSkinCondition: '',
+    
+    // Respiratory
+    respiratorySymmetrical: true,
+    respiratoryAsymmetrical: false,
+    lungSounds: '',
+    otherLungSounds: '',
+    respiratoryEffort: '',
+    otherRespiratoryEffort: '',
+    
+    // Mobility
+    gaitSteady: true,
+    usesCane: false,
+    usesCrutches: false,
+    usesWheelchair: false,
+    bedridden: false,
+    requiresAssistance: false,
+    otherMobilityStatus: '',
+    otherAssistiveDevice: ''
   });
-  
-  const [patients, setPatients] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingPatients, setLoadingPatients] = useState(true);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    loadPatients();
-  }, []);
-
-  const loadPatients = async () => {
-    try {
-      const data = await patientService.getAllPatients();
-      setPatients(data || []);
-    } catch (error) {
-      console.error('Error loading patients:', error);
-      toast.error('Failed to load patients');
-      setPatients([]);
-    } finally {
-      setLoadingPatients(false);
-    }
-  };
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData({
-        ...formData,
-        [parent]: {
-          ...formData[parent],
-          [child]: type === 'checkbox' ? checked : value,
-        },
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: type === 'checkbox' ? checked : value,
-      });
-    }
-  };
-
-  const handleNumberChange = (e) => {
-    const { name, value } = e.target;
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData({
-        ...formData,
-        [parent]: {
-          ...formData[parent],
-          [child]: value === '' ? null : Number(value),
-        },
-      });
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    if (!formData.patientId) {
-      toast.error('Please select a patient');
-      return;
-    }
-
-    setLoading(true);
-
-    const submitData = {
-      patientId: formData.patientId,
-      nurseNotes: formData.nurseNotes,
-      assessmentDate: formData.assessmentDate,
-      vitals: {
-        bloodPressure: formData.vitals.bloodPressure,
-        pulseRate: formData.vitals.pulseRate ? Number(formData.vitals.pulseRate) : null,
-        respiratoryRate: formData.vitals.respiratoryRate ? Number(formData.vitals.respiratoryRate) : null,
-        temperature: formData.vitals.temperature ? Number(formData.vitals.temperature) : null,
-        spO2: formData.vitals.spO2 ? Number(formData.vitals.spO2) : null,
-        oxygenSaturation: formData.vitals.oxygenSaturation ? Number(formData.vitals.oxygenSaturation) : null,
-        oxygenGiven: formData.vitals.oxygenGiven,
-        ivStarted: formData.vitals.ivStarted,
-        cprPerformed: formData.vitals.cprPerformed,
-      },
-      neuro: formData.neuro,
-      skin: formData.skin,
-      respiratory: formData.respiratory,
-      mobility: formData.mobility,
-    };
-
     try {
-      const response = await assessmentService.createAssessment(submitData);
-      toast.success('Assessment created successfully!');
-      navigate(`/patients/${formData.patientId}/history`);
+      // Convert string numbers to actual numbers
+      const dataToSubmit = {
+        ...formData,
+        pulseRate: formData.pulseRate ? parseInt(formData.pulseRate) : null,
+        respiratoryRate: formData.respiratoryRate ? parseInt(formData.respiratoryRate) : null,
+        spO2: formData.spO2 ? parseInt(formData.spO2) : null,
+        temperature: formData.temperature ? parseFloat(formData.temperature) : null,
+        oxygenLitersPerMinute: formData.oxygenLitersPerMinute ? parseFloat(formData.oxygenLitersPerMinute) : null,
+        painScore: formData.painScore ? parseInt(formData.painScore) : null,
+      };
+      
+      const result = await assessmentService.createAssessment(dataToSubmit);
+      
+      if (onSuccess) {
+        onSuccess(result);
+      }
     } catch (error) {
       console.error('Error creating assessment:', error);
-      toast.error(error.response?.data?.message || 'Failed to create assessment');
+      alert('Failed to create assessment. Please try again.');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (loadingPatients) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p>Loading patients...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <div style={styles.headerIcon}>📋</div>
-          <div>
-            <h1 style={styles.title}>New Clinical Assessment</h1>
-            <p style={styles.subtitle}>Document patient examination and vital signs</p>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {/* Patient Selection */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              <span style={styles.labelIcon}>👤</span>
-              Select Patient *
-            </label>
-            <select
-              name="patientId"
-              value={formData.patientId}
-              onChange={handleChange}
-              required
-              style={styles.select}
-            >
-              <option value="">-- Select a patient --</option>
-              {patients.map((patient) => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.fullName || `${patient.firstName} ${patient.lastName}` || patient.name || 'Unnamed Patient'} 
-                  {patient.dateOfBirth ? ` (DOB: ${new Date(patient.dateOfBirth).toLocaleDateString()})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Assessment Date */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              <span style={styles.labelIcon}>📅</span>
-              Assessment Date
-            </label>
-            <input
-              type="date"
-              name="assessmentDate"
-              value={formData.assessmentDate}
-              onChange={handleChange}
-              style={styles.input}
-            />
-          </div>
-
-          {/* Nurse Notes */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              <span style={styles.labelIcon}>📝</span>
-              Nurse Notes
-            </label>
-            <textarea
-              name="nurseNotes"
-              value={formData.nurseNotes}
-              onChange={handleChange}
-              style={styles.textarea}
-              rows="4"
-              placeholder="Enter your clinical observations and notes..."
-            />
-          </div>
-
-          {/* Vital Signs Section */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>🩺 Vital Signs</h3>
-            <div style={styles.grid2}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Blood Pressure (mmHg)</label>
-                <input
-                  type="text"
-                  name="vitals.bloodPressure"
-                  value={formData.vitals.bloodPressure}
-                  onChange={handleChange}
-                  style={styles.input}
-                  placeholder="e.g., 120/80"
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Pulse Rate (bpm)</label>
-                <input
-                  type="number"
-                  name="vitals.pulseRate"
-                  value={formData.vitals.pulseRate || ''}
-                  onChange={handleNumberChange}
-                  style={styles.input}
-                  placeholder="e.g., 72"
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Respiratory Rate (breaths/min)</label>
-                <input
-                  type="number"
-                  name="vitals.respiratoryRate"
-                  value={formData.vitals.respiratoryRate || ''}
-                  onChange={handleNumberChange}
-                  style={styles.input}
-                  placeholder="e.g., 16"
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>SpO2 (%)</label>
-                <input
-                  type="number"
-                  name="vitals.spO2"
-                  value={formData.vitals.spO2 || ''}
-                  onChange={handleNumberChange}
-                  style={styles.input}
-                  placeholder="e.g., 98"
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Temperature (°C)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="vitals.temperature"
-                  value={formData.vitals.temperature || ''}
-                  onChange={handleNumberChange}
-                  style={styles.input}
-                  placeholder="e.g., 37.0"
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Oxygen Saturation (%)</label>
-                <input
-                  type="number"
-                  name="vitals.oxygenSaturation"
-                  value={formData.vitals.oxygenSaturation || ''}
-                  onChange={handleNumberChange}
-                  style={styles.input}
-                  placeholder="e.g., 95"
-                />
-              </div>
-            </div>
-            
-            <div style={styles.checkboxGroup}>
-              <label style={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="vitals.oxygenGiven"
-                  checked={formData.vitals.oxygenGiven}
-                  onChange={handleChange}
-                />
-                <span>Oxygen Given</span>
-              </label>
-              <label style={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="vitals.ivStarted"
-                  checked={formData.vitals.ivStarted}
-                  onChange={handleChange}
-                />
-                <span>IV Started</span>
-              </label>
-              <label style={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="vitals.cprPerformed"
-                  checked={formData.vitals.cprPerformed}
-                  onChange={handleChange}
-                />
-                <span>CPR Performed</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Neurological Status Section */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>🧠 Neurological Status</h3>
-            <div style={styles.checkboxGroup}>
-              <label style={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="neuro.isAlert"
-                  checked={formData.neuro.isAlert}
-                  onChange={handleChange}
-                />
-                <span>Alert</span>
-              </label>
-              <label style={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="neuro.isOriented"
-                  checked={formData.neuro.isOriented}
-                  onChange={handleChange}
-                />
-                <span>Oriented</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Skin Assessment Section */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>🩸 Skin Assessment</h3>
-            <div style={styles.checkboxGrid}>
-              {Object.keys(formData.skin).map(key => (
-                <label key={key} style={styles.checkbox}>
-                  <input
-                    type="checkbox"
-                    name={`skin.${key}`}
-                    checked={formData.skin[key]}
-                    onChange={handleChange}
-                  />
-                  <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Respiratory Assessment Section */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>🌬️ Respiratory Assessment</h3>
-            <div style={styles.checkboxGroup}>
-              <label style={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="respiratory.symmetrical"
-                  checked={formData.respiratory.symmetrical}
-                  onChange={handleChange}
-                />
-                <span>Symmetrical Breath Sounds</span>
-              </label>
-              <label style={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  name="respiratory.asymmetrical"
-                  checked={formData.respiratory.asymmetrical}
-                  onChange={handleChange}
-                />
-                <span>Asymmetrical Breath Sounds</span>
-              </label>
-            </div>
+    <form onSubmit={handleSubmit} style={styles.form}>
+      <h2>New {typeConfig?.name || 'Assessment'}</h2>
+      
+      {/* Vital Signs Section */}
+      {hasSection('vitalSigns') && (
+        <section style={styles.section}>
+          <h3>Vital Signs</h3>
+          <div style={styles.grid}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Lung Sounds</label>
+              <label>Blood Pressure (e.g., 120/80)</label>
               <input
                 type="text"
-                name="respiratory.lungSounds"
-                value={formData.respiratory.lungSounds}
+                name="bloodPressure"
+                value={formData.bloodPressure}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Clear, Wheezing, Crackles, etc."
+                placeholder="120/80"
+              />
+            </div>
+            
+            <div style={styles.formGroup}>
+              <label>Pulse Rate (bpm)</label>
+              <input
+                type="number"
+                name="pulseRate"
+                value={formData.pulseRate}
+                onChange={handleChange}
+                placeholder="60-100"
+              />
+            </div>
+            
+            <div style={styles.formGroup}>
+              <label>Respiratory Rate</label>
+              <input
+                type="number"
+                name="respiratoryRate"
+                value={formData.respiratoryRate}
+                onChange={handleChange}
+                placeholder="12-20"
+              />
+            </div>
+            
+            <div style={styles.formGroup}>
+              <label>SpO2 (%)</label>
+              <input
+                type="number"
+                name="spO2"
+                value={formData.spO2}
+                onChange={handleChange}
+                placeholder="95-100"
+              />
+            </div>
+            
+            <div style={styles.formGroup}>
+              <label>Temperature (°C)</label>
+              <input
+                type="number"
+                step="0.1"
+                name="temperature"
+                value={formData.temperature}
+                onChange={handleChange}
+                placeholder="36.5-37.5"
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label>Oxygen (L/min)</label>
+              <input
+                type="number"
+                step="0.5"
+                name="oxygenLitersPerMinute"
+                value={formData.oxygenLitersPerMinute}
+                onChange={handleChange}
+                placeholder="e.g., 2"
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label>Pain Score (0-10)</label>
+              <input
+                type="number"
+                min="0"
+                max="10"
+                name="painScore"
+                value={formData.painScore}
+                onChange={handleChange}
+                placeholder="0-10"
               />
             </div>
           </div>
-
-          {/* Mobility Assessment Section */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>🚶 Mobility Assessment</h3>
-            <div style={styles.checkboxGrid}>
-              {Object.keys(formData.mobility).map(key => (
-                <label key={key} style={styles.checkbox}>
+        </section>
+      )}
+      
+      {/* Interventions Section */}
+      {hasSection('interventions') && (
+        <section style={styles.section}>
+          <h3>Interventions</h3>
+          <div style={styles.checkboxGroup}>
+            <label>
+              <input
+                type="checkbox"
+                name="oxygenGiven"
+                checked={formData.oxygenGiven}
+                onChange={handleChange}
+              />
+              Oxygen Given
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="ivStarted"
+                checked={formData.ivStarted}
+                onChange={handleChange}
+              />
+              IV Started
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="cprPerformed"
+                checked={formData.cprPerformed}
+                onChange={handleChange}
+              />
+              CPR Performed
+            </label>
+          </div>
+        </section>
+      )}
+      
+      {/* Neurological Section */}
+      {hasSection('neurological') && (
+        <section style={styles.section}>
+          <h3>Neurological Status</h3>
+          <div style={styles.checkboxGroup}>
+            <label>
+              <input
+                type="checkbox"
+                name="isAlert"
+                checked={formData.isAlert}
+                onChange={handleChange}
+              />
+              Alert
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="isOriented"
+                checked={formData.isOriented}
+                onChange={handleChange}
+              />
+              Oriented
+            </label>
+          </div>
+        </section>
+      )}
+      
+      {/* Skin Conditions Section */}
+      {hasSection('skin') && (
+        <section style={styles.section}>
+          <h3>Skin Conditions</h3>
+          <div style={styles.checkboxGrid}>
+            {['Warm', 'Dry', 'Pale', 'Cool', 'Hot', 'Flushed', 'Cyanotic', 'Clammy', 'Jaundice', 'Diaphoretic'].map(condition => {
+              const fieldName = `skin${condition}`;
+              return (
+                <label key={condition}>
                   <input
                     type="checkbox"
-                    name={`mobility.${key}`}
-                    checked={formData.mobility[key]}
+                    name={fieldName}
+                    checked={formData[fieldName]}
                     onChange={handleChange}
                   />
-                  <span>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                  {condition}
                 </label>
-              ))}
-            </div>
+              );
+            })}
           </div>
-
-          {/* Submit Buttons */}
-          <div style={styles.buttonGroup}>
-            <button
-              type="button"
-              onClick={() => navigate('/patients')}
-              style={styles.cancelButton}
+          
+          <div style={styles.formGroup}>
+            <label>Other Skin Condition</label>
+            <input
+              type="text"
+              name="otherSkinCondition"
+              value={formData.otherSkinCondition}
+              onChange={handleChange}
+              placeholder="Describe any other skin conditions"
+            />
+          </div>
+        </section>
+      )}
+      
+      {/* Respiratory Section */}
+      {hasSection('respiratory') && (
+        <section style={styles.section}>
+          <h3>Respiratory Assessment</h3>
+          <div style={styles.checkboxGroup}>
+            <label>
+              <input
+                type="checkbox"
+                name="respiratorySymmetrical"
+                checked={formData.respiratorySymmetrical}
+                onChange={handleChange}
+              />
+              Symmetrical Breath Sounds
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="respiratoryAsymmetrical"
+                checked={formData.respiratoryAsymmetrical}
+                onChange={handleChange}
+              />
+              Asymmetrical Breath Sounds
+            </label>
+          </div>
+          
+          <div style={styles.formGroup}>
+            <label>Lung Sounds</label>
+            <select
+              name="lungSounds"
+              value={formData.lungSounds}
+              onChange={handleChange}
             >
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} style={styles.submitButton}>
-              {loading ? (
-                <>
-                  <span style={styles.spinner}></span>
-                  Creating...
-                </>
-              ) : (
-                'Create Assessment'
-              )}
-            </button>
+              <option value="">Select Lung Sounds</option>
+              <option value="Clear">Clear</option>
+              <option value="Wheezing">Wheezing</option>
+              <option value="Crackles">Crackles</option>
+              <option value="Diminished">Diminished</option>
+              <option value="Stridor">Stridor</option>
+              <option value="Coarse">Coarse</option>
+            </select>
           </div>
-        </form>
+          
+          <div style={styles.formGroup}>
+            <label>Other Lung Sounds</label>
+            <input
+              type="text"
+              name="otherLungSounds"
+              value={formData.otherLungSounds}
+              onChange={handleChange}
+              placeholder="Describe other lung sounds"
+            />
+          </div>
+          
+          <div style={styles.formGroup}>
+            <label>Respiratory Effort</label>
+            <select
+              name="respiratoryEffort"
+              value={formData.respiratoryEffort}
+              onChange={handleChange}
+            >
+              <option value="">Select Respiratory Effort</option>
+              <option value="Normal">Normal</option>
+              <option value="Labored">Labored</option>
+              <option value="Dyspnea">Dyspnea</option>
+              <option value="Shallow">Shallow</option>
+              <option value="Tachypneic">Tachypneic</option>
+            </select>
+          </div>
+          
+          <div style={styles.formGroup}>
+            <label>Other Respiratory Effort</label>
+            <input
+              type="text"
+              name="otherRespiratoryEffort"
+              value={formData.otherRespiratoryEffort}
+              onChange={handleChange}
+              placeholder="Describe other respiratory effort"
+            />
+          </div>
+        </section>
+      )}
+      
+      {/* Mobility Section */}
+      {hasSection('musculoskeletal') && (
+        <section style={styles.section}>
+          <h3>Mobility Assessment</h3>
+          <div style={styles.checkboxGroup}>
+            <label>
+              <input
+                type="checkbox"
+                name="gaitSteady"
+                checked={formData.gaitSteady}
+                onChange={handleChange}
+              />
+              Gait Steady
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="requiresAssistance"
+                checked={formData.requiresAssistance}
+                onChange={handleChange}
+              />
+              Requires Assistance
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="bedridden"
+                checked={formData.bedridden}
+                onChange={handleChange}
+              />
+              Bedridden
+            </label>
+          </div>
+          
+          <h4>Assistive Devices</h4>
+          <div style={styles.checkboxGroup}>
+            <label>
+              <input
+                type="checkbox"
+                name="usesCane"
+                checked={formData.usesCane}
+                onChange={handleChange}
+              />
+              Cane
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="usesCrutches"
+                checked={formData.usesCrutches}
+                onChange={handleChange}
+              />
+              Crutches
+            </label>
+            
+            <label>
+              <input
+                type="checkbox"
+                name="usesWheelchair"
+                checked={formData.usesWheelchair}
+                onChange={handleChange}
+              />
+              Wheelchair
+            </label>
+          </div>
+          
+          <div style={styles.formGroup}>
+            <label>Other Mobility Status</label>
+            <input
+              type="text"
+              name="otherMobilityStatus"
+              value={formData.otherMobilityStatus}
+              onChange={handleChange}
+              placeholder="Describe other mobility status"
+            />
+          </div>
+          
+          <div style={styles.formGroup}>
+            <label>Other Assistive Device</label>
+            <input
+              type="text"
+              name="otherAssistiveDevice"
+              value={formData.otherAssistiveDevice}
+              onChange={handleChange}
+              placeholder="Describe other assistive device"
+            />
+          </div>
+        </section>
+      )}
+      
+      {/* Nurse Notes */}
+      <section style={styles.section}>
+        <h3>Nurse Notes</h3>
+        <textarea
+          name="nurseNotes"
+          value={formData.nurseNotes}
+          onChange={handleChange}
+          rows="5"
+          style={styles.textarea}
+          placeholder="Enter detailed assessment notes..."
+        />
+      </section>
+      
+      {/* Form Actions */}
+      <div style={styles.buttonGroup}>
+        {onCancel && (
+          <button type="button" onClick={onCancel} style={styles.cancelButton}>
+            Cancel
+          </button>
+        )}
+        <button type="submit" disabled={isSubmitting} style={styles.submitButton}>
+          {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
+        </button>
       </div>
-    </div>
+    </form>
   );
 };
 
 const styles = {
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    minHeight: 'calc(100vh - 70px)',
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: '24px',
-    padding: '2rem',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-    animation: 'slideUp 0.5s ease',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    marginBottom: '2rem',
-    paddingBottom: '1.5rem',
-    borderBottom: '2px solid #f0f0f0',
-  },
-  headerIcon: {
-    fontSize: '2.5rem',
-  },
-  title: {
-    margin: 0,
-    fontSize: '1.8rem',
-    color: '#2c3e50',
-    fontWeight: '600',
-  },
-  subtitle: {
-    margin: '0.5rem 0 0 0',
-    color: '#7f8c8d',
-    fontSize: '0.9rem',
-  },
   form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '24px',
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
   },
   section: {
-    borderTop: '1px solid #f0f0f0',
-    paddingTop: '1.5rem',
+    marginBottom: '32px',
+    paddingBottom: '24px',
+    borderBottom: '1px solid #e0e0e0',
   },
-  sectionTitle: {
-    margin: '0 0 1rem 0',
-    fontSize: '1.2rem',
-    color: '#2c3e50',
-    fontWeight: '600',
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: '16px',
   },
   formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  label: {
-    fontWeight: '600',
-    color: '#2c3e50',
-    fontSize: '0.9rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  labelIcon: {
-    fontSize: '1rem',
-  },
-  input: {
-    padding: '0.75rem 1rem',
-    border: '2px solid #e0e0e0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-    fontFamily: 'inherit',
-  },
-  select: {
-    padding: '0.75rem 1rem',
-    border: '2px solid #e0e0e0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-    fontFamily: 'inherit',
-    backgroundColor: 'white',
-    cursor: 'pointer',
-  },
-  textarea: {
-    padding: '0.75rem 1rem',
-    border: '2px solid #e0e0e0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-    fontFamily: 'inherit',
-    resize: 'vertical',
-  },
-  grid2: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '1rem',
+    marginBottom: '16px',
   },
   checkboxGroup: {
     display: 'flex',
-    gap: '1.5rem',
+    gap: '16px',
     flexWrap: 'wrap',
-    marginTop: '0.5rem',
+    marginBottom: '16px',
   },
   checkboxGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-    gap: '0.75rem',
-    marginTop: '0.5rem',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+    gap: '8px',
+    marginBottom: '16px',
   },
-  checkbox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    color: '#2c3e50',
+  textarea: {
+    width: '100%',
+    padding: '8px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    fontSize: '14px',
+    fontFamily: 'inherit',
   },
   buttonGroup: {
     display: 'flex',
-    gap: '1rem',
-    marginTop: '1rem',
-    paddingTop: '1rem',
-    borderTop: '2px solid #f0f0f0',
+    gap: '12px',
+    justifyContent: 'flex-end',
   },
   submitButton: {
-    flex: 1,
-    padding: '0.875rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    padding: '10px 20px',
+    backgroundColor: '#667eea',
     color: 'white',
     border: 'none',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    fontWeight: '600',
+    borderRadius: '4px',
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.5rem',
+    fontSize: '14px',
   },
   cancelButton: {
-    flex: 1,
-    padding: '0.875rem',
-    backgroundColor: '#ecf0f1',
-    color: '#7f8c8d',
+    padding: '10px 20px',
+    backgroundColor: '#f0f0f0',
+    color: '#666',
     border: 'none',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    fontWeight: '600',
+    borderRadius: '4px',
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
-  },
-  spinner: {
-    width: '16px',
-    height: '16px',
-    border: '2px solid rgba(255,255,255,0.3)',
-    borderTopColor: 'white',
-    borderRadius: '50%',
-    animation: 'spin 0.6s linear infinite',
-    display: 'inline-block',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '400px',
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '2rem',
+    fontSize: '14px',
   },
 };
-
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
-  input:focus, select:focus, textarea:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-  
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  }
-  
-  @media (max-width: 768px) {
-    .grid2 {
-      grid-template-columns: 1fr;
-    }
-  }
-`;
-document.head.appendChild(styleSheet);
 
 export default AssessmentForm;

@@ -10,6 +10,8 @@ import PatientList from './components/Patients/PatientList';
 import PatientForm from './components/Patients/PatientForm';
 import PatientDetail from './components/Patients/PatientDetail';
 import AssessmentForm from './components/Assessments/AssessmentForm';
+import NewAssessmentPage from './components/Assessments/NewAssessmentPage';
+import NewAssessmentFormPage from './components/Assessments/NewAssessmentFormPage';
 import AssessmentReport from './components/Assessments/AssessmentReport';
 import PatientHistory from './components/Patients/PatientHistory';
 import AssessmentDebug from './components/Assessments/AssessmentDebug';
@@ -54,7 +56,12 @@ function AppRoutes() {
         } />
         <Route path="/assessments/new" element={
           <PrivateRoute>
-            <AssessmentForm />
+            <NewAssessmentPage />
+          </PrivateRoute>
+        } />
+        <Route path="/assessments/new/form" element={
+          <PrivateRoute>
+            <NewAssessmentFormPage />
           </PrivateRoute>
         } />
         <Route path="/assessments/:id/report" element={

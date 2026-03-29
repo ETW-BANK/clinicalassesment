@@ -1,376 +1,338 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import patientService from '../../services/patientService';
-import toast from 'react-hot-toast';
 
-const PatientForm = () => {
+const PatientForm = ({ onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     dateOfBirth: '',
     gender: '',
-    phone: '',
-    email: '',
+    phoneNumber: '',
     address: '',
   });
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.firstName?.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+    if (!formData.lastName?.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    }
+    if (!formData.gender) {
+      newErrors.gender = 'Gender is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
     try {
-      await patientService.createPatient(formData);
-      toast.success('Patient created successfully!');
-      navigate('/patients');
+      const dateOfBirthDateTime = `${formData.dateOfBirth}T00:00:00`;
+      const patientData = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        dateOfBirth: dateOfBirthDateTime,
+        gender: formData.gender,
+        phoneNumber: formData.phoneNumber?.trim() || null,
+        address: formData.address?.trim() || null,
+      };
+      
+      console.log('Sending patient data:', patientData);
+      
+      const response = await patientService.createPatient(patientData);
+      
+      console.log('Patient created:', response);
+      
+      setFormData({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        gender: '',
+        phoneNumber: '',
+        address: '',
+      });
+      
+      if (onSuccess) {
+        onSuccess(response);
+      }
+      
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create patient');
       console.error('Error creating patient:', error);
+
+      const responseData = error?.response?.data;
+      if (responseData) {
+        console.error('Backend response:', responseData);
+      }
+      
+      if (error.response?.data?.errors) {
+        const backendErrors = error.response.data.errors;
+        const formattedErrors = {};
+        
+        Object.keys(backendErrors).forEach(key => {
+          const formField = key.charAt(0).toLowerCase() + key.slice(1);
+          formattedErrors[formField] = backendErrors[key][0];
+        });
+        
+        setErrors(formattedErrors);
+      } else if (typeof error.response?.data === 'string') {
+        setErrors({ submit: error.response.data });
+      } else if (error.response?.data?.title) {
+        setErrors({ submit: error.response.data.title });
+      } else {
+        setErrors({ submit: 'Failed to create patient. Please try again.' });
+      }
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <div style={styles.headerIcon}>👤</div>
-          <div>
-            <h1 style={styles.title}>Add New Patient</h1>
-            <p style={styles.subtitle}>Enter patient details to create a new record</p>
+    <div className="patient-form-wrapper">
+      <form onSubmit={handleSubmit} className="patient-form">
+        {errors.submit && (
+          <div className="error-message">{errors.submit}</div>
+        )}
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">First Name *</label>
+            <input
+              type="text"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              className={`form-input ${errors.firstName ? 'error' : ''}`}
+            />
+            {errors.firstName && <span className="error-text">{errors.firstName}</span>}
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Last Name *</label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              className={`form-input ${errors.lastName ? 'error' : ''}`}
+            />
+            {errors.lastName && <span className="error-text">{errors.lastName}</span>}
           </div>
         </div>
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.formGrid}>
-            {/* First Name */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <span style={styles.labelIcon}>📝</span>
-                First Name *
-              </label>
-              <input
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-                style={styles.input}
-                placeholder="Enter first name"
-              />
-            </div>
-
-            {/* Last Name */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <span style={styles.labelIcon}>📝</span>
-                Last Name *
-              </label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                required
-                style={styles.input}
-                placeholder="Enter last name"
-              />
-            </div>
-
-            {/* Date of Birth */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <span style={styles.labelIcon}>🎂</span>
-                Date of Birth
-              </label>
-              <input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            {/* Gender */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <span style={styles.labelIcon}>⚥</span>
-                Gender
-              </label>
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            {/* Phone */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <span style={styles.labelIcon}>📞</span>
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="+1 234 567 8900"
-              />
-            </div>
-
-            {/* Email */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <span style={styles.labelIcon}>📧</span>
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="patient@example.com"
-              />
-            </div>
-
-            {/* Address - Full Width */}
-            <div style={styles.fullWidth}>
-              <label style={styles.label}>
-                <span style={styles.labelIcon}>🏠</span>
-                Address
-              </label>
-              <textarea
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                style={styles.textarea}
-                rows="3"
-                placeholder="Enter complete address"
-              />
-            </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Date of Birth *</label>
+            <input
+              type="date"
+              name="dateOfBirth"
+              value={formData.dateOfBirth}
+              onChange={handleChange}
+              className={`form-input ${errors.dateOfBirth ? 'error' : ''}`}
+            />
+            {errors.dateOfBirth && <span className="error-text">{errors.dateOfBirth}</span>}
           </div>
-
-          <div style={styles.buttonGroup}>
-            <button
-              type="button"
-              onClick={() => navigate('/patients')}
-              style={styles.cancelButton}
+          
+          <div className="form-group">
+            <label className="form-label">Gender *</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className={`form-select ${errors.gender ? 'error' : ''}`}
             >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            {errors.gender && <span className="error-text">{errors.gender}</span>}
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Phone Number</label>
+            <input
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="(555) 123-4567"
+            />
+            {errors.phoneNumber && <span className="error-text">{errors.phoneNumber}</span>}
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Address</label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              className="form-textarea"
+              rows="3"
+              placeholder="Enter full address"
+            />
+            {errors.address && <span className="error-text">{errors.address}</span>}
+          </div>
+        </div>
+        
+        <div className="form-actions">
+          {onCancel && (
+            <button type="button" onClick={onCancel} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" disabled={loading} style={styles.submitButton}>
-              {loading ? (
-                <>
-                  <span style={styles.spinnerSmall}></span>
-                  Creating...
-                </>
-              ) : (
-                'Create Patient'
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
+          )}
+          <button type="submit" disabled={isSubmitting} className="btn-primary">
+            {isSubmitting ? 'Creating...' : 'Create Patient'}
+          </button>
+        </div>
+      </form>
+
+      <style>{`
+        .patient-form-wrapper {
+          max-width: 800px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 24px;
+          padding: 2rem;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .patient-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .form-row {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1.5rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .form-input, .form-select, .form-textarea {
+          width: 100%;
+          padding: 0.875rem 1rem;
+          border: 2px solid #e0e0e0;
+          border-radius: 12px;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          outline: none;
+          font-family: inherit;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+          border-color: #667eea;
+          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+          transform: translateY(-1px);
+        }
+
+        .form-input.error, .form-select.error, .form-textarea.error {
+          border-color: #e74c3c;
+        }
+
+        .error-text {
+          color: #e74c3c;
+          font-size: 0.75rem;
+        }
+
+        .error-message {
+          background: #fde8e8;
+          color: #e74c3c;
+          padding: 0.75rem 1rem;
+          border-radius: 12px;
+          font-size: 0.875rem;
+        }
+
+        .form-actions {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .btn-primary, .btn-secondary {
+          flex: 1;
+          padding: 0.875rem;
+          border: none;
+          border-radius: 12px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-secondary {
+          background: #f0f0f0;
+          color: #666;
+        }
+
+        .btn-secondary:hover {
+          background: #e0e0e0;
+          transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+          .patient-form-wrapper {
+            padding: 1.5rem;
+          }
+
+          .form-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+
+          .form-actions {
+            flex-direction: column;
+          }
+        }
+      `}</style>
     </div>
   );
 };
-
-const styles = {
-  container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '2rem',
-    minHeight: 'calc(100vh - 70px)',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: '24px',
-    padding: '2rem',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-    animation: 'slideUp 0.5s ease',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    marginBottom: '2rem',
-    paddingBottom: '1.5rem',
-    borderBottom: '2px solid #f0f0f0',
-  },
-  headerIcon: {
-    fontSize: '3rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    width: '70px',
-    height: '70px',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '2rem',
-    color: 'white',
-  },
-  title: {
-    margin: 0,
-    fontSize: '1.8rem',
-    color: '#2c3e50',
-    fontWeight: '600',
-  },
-  subtitle: {
-    margin: '0.5rem 0 0 0',
-    color: '#7f8c8d',
-    fontSize: '0.9rem',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '1.5rem',
-  },
-  fullWidth: {
-    gridColumn: 'span 2',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  label: {
-    fontWeight: '600',
-    color: '#2c3e50',
-    fontSize: '0.9rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  labelIcon: {
-    fontSize: '1rem',
-  },
-  input: {
-    padding: '0.75rem 1rem',
-    border: '2px solid #e0e0e0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-    fontFamily: 'inherit',
-  },
-  textarea: {
-    padding: '0.75rem 1rem',
-    border: '2px solid #e0e0e0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-    fontFamily: 'inherit',
-    resize: 'vertical',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '1rem',
-    marginTop: '1rem',
-    paddingTop: '1rem',
-    borderTop: '2px solid #f0f0f0',
-  },
-  submitButton: {
-    flex: 1,
-    padding: '0.875rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.5rem',
-  },
-  cancelButton: {
-    flex: 1,
-    padding: '0.875rem',
-    backgroundColor: '#ecf0f1',
-    color: '#7f8c8d',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-  },
-  spinnerSmall: {
-    width: '16px',
-    height: '16px',
-    border: '2px solid rgba(255,255,255,0.3)',
-    borderTopColor: 'white',
-    borderRadius: '50%',
-    animation: 'spin 0.6s linear infinite',
-    display: 'inline-block',
-  },
-};
-
-// Add animations
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
-  input:focus, textarea:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-  
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  }
-  
-  @media (max-width: 768px) {
-    .form-grid {
-      grid-template-columns: 1fr;
-    }
-    .full-width {
-      grid-column: span 1;
-    }
-  }
-`;
-document.head.appendChild(styleSheet);
 
 export default PatientForm;

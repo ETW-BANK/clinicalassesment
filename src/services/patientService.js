@@ -1,72 +1,95 @@
+// services/patientService.js
 import api from './api';
 
-const extractArray = (data) => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.patients)) return data.patients;
-  if (Array.isArray(data?.$values)) return data.$values;
-  return [];
+const toNullableTrimmedString = (value) => {
+  const trimmed = (value ?? '').toString().trim();
+  return trimmed ? trimmed : null;
 };
 
-const normalizePatientFromApi = (patient) => {
-  if (!patient || typeof patient !== 'object') return patient;
-  return {
-    ...patient,
-    id: patient.id ?? patient.patientId,
-  };
-};
+const toRequiredTrimmedString = (value) => (value ?? '').toString().trim();
 
-const normalizePatientPayload = (patientData) => {
-  const payload = {
-    firstName: patientData?.firstName?.trim() || '',
-    lastName: patientData?.lastName?.trim() || '',
-    dateOfBirth: patientData?.dateOfBirth,
-    gender: patientData?.gender,
-    phoneNumber: patientData?.phoneNumber,
-    address: patientData?.address,
-  };
+const toDateTimeString = (value) => {
+  if (!value) return value;
+  const asString = value.toString();
 
-  if (!payload.dateOfBirth) {
-    delete payload.dateOfBirth;
-  } else {
-    payload.dateOfBirth = new Date(`${payload.dateOfBirth}T00:00:00`).toISOString();
+  // If it's already an ISO/date-time string, keep it.
+  if (asString.includes('T')) return asString;
+
+  // If it's a YYYY-MM-DD date from <input type="date">, convert to date-time
+  if (/^\d{4}-\d{2}-\d{2}$/.test(asString)) {
+    return `${asString}T00:00:00`;
   }
 
-  if (!payload.gender) delete payload.gender;
-  if (!payload.phoneNumber) delete payload.phoneNumber;
-  if (!payload.address) delete payload.address;
-
-  return payload;
+  return asString;
 };
 
 const patientService = {
-  getAllPatients: async () => {
-    const response = await api.get('/Patients');
-    return extractArray(response.data).map(normalizePatientFromApi);
-  },
+  // Create new patient
+  async createPatient(patientData) {
+    const payload = {
+      firstName: toRequiredTrimmedString(patientData.firstName),
+      lastName: toRequiredTrimmedString(patientData.lastName),
+      dateOfBirth: toDateTimeString(patientData.dateOfBirth),
+      gender: toRequiredTrimmedString(patientData.gender),
+      phoneNumber: toNullableTrimmedString(patientData.phoneNumber),
+      address: toNullableTrimmedString(patientData.address)
+    };
 
-  getPatientById: async (id) => {
-    const response = await api.get(`/Patients/${id}`);
-    const patient = response.data?.patient ?? response.data;
-    return normalizePatientFromApi(patient);
-  },
-
-  createPatient: async (patientData) => {
-    const response = await api.post('/Patients', normalizePatientPayload(patientData));
+    const response = await api.post('/Patients', {
+      ...payload
+    });
     return response.data;
   },
 
-  getPatientAssessments: async (patientId) => {
-    // Note: You'll need to create this endpoint on your backend
-    // For now, it might return an empty array if not implemented
-    try {
-      const response = await api.get(`/Patients/${patientId}/assessments`);
-      return extractArray(response.data);
-    } catch (error) {
-      console.error('Error fetching patient assessments:', error);
-      return [];
-    }
+  // Get all patients with optional name filter
+  async getPatients(name = '') {
+    const params = name ? { name } : {};
+    const response = await api.get('/Patients', { params });
+    return response.data;
   },
+
+  // Back-compat alias (some components use getAllPatients)
+  async getAllPatients(name = '') {
+    return patientService.getPatients(name);
+  },
+
+  // Get patient by ID
+  async getPatientById(id) {
+    const response = await api.get(`/Patients/${id}`);
+    return response.data;
+  },
+
+  // Update patient
+  async updatePatient(id, patientData) {
+    const response = await api.put(`/Patients/${id}`, {
+      firstName: patientData.firstName,
+      lastName: patientData.lastName,
+      dateOfBirth: patientData.dateOfBirth,
+      gender: patientData.gender,
+      phoneNumber: patientData.phoneNumber,
+      address: patientData.address
+    });
+    return response.data;
+  },
+
+  // Delete patient
+  async deletePatient(id) {
+    const response = await api.delete(`/Patients/${id}`);
+    return response.data;
+  },
+
+  // Get patient lookup (for dropdowns)
+  async getPatientLookup(name = '') {
+    const params = name ? { name } : {};
+    const response = await api.get('/Patients/lookup', { params });
+    return response.data;
+  },
+
+  // Get patient's assessments
+  async getPatientAssessments(id) {
+    const response = await api.get(`/Patients/${id}/assessments`);
+    return response.data;
+  }
 };
-    
+
 export default patientService;
