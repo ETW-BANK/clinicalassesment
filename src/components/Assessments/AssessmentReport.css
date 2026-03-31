@@ -1,3 +1,54 @@
+@media (max-width: 900px) {
+	.ar-container {
+		padding: 0.5rem;
+	}
+	.ar-shell {
+		padding: 0.5rem;
+	}
+	.ar-table-grid {
+		grid-template-columns: 1fr;
+		gap: 0.75rem;
+	}
+	.ar-card, .ar-card--full {
+		min-width: 0;
+		width: 100%;
+		box-sizing: border-box;
+	}
+	.ar-narrative {
+		margin-bottom: 1rem;
+	}
+}
+
+@media (max-width: 600px) {
+	.ar-header {
+		flex-direction: column;
+		gap: 0.5rem;
+		align-items: stretch;
+	}
+	.ar-patient-bar--centered {
+		padding: 1rem 0.2rem 1rem 0.2rem;
+	}
+	.ar-patient-name--centered {
+		font-size: 1.3rem;
+	}
+	.ar-part-label--centered {
+		font-size: 1rem;
+	}
+	.ar-table-grid {
+		gap: 0.5rem;
+	}
+	.ar-card-header, .ar-narrative-header {
+		font-size: 1rem;
+		padding: 0.5rem 0.5rem;
+	}
+	.ar-kv-label, .ar-kv-value {
+		font-size: 0.95rem;
+		padding: 0.3rem;
+	}
+	.ar-narrative-body {
+		padding: 0.5rem;
+	}
+}
 .ar-patient-bar--centered {
 	display: flex;
 	justify-content: center;
