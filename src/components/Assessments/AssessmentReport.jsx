@@ -383,21 +383,14 @@ const AssessmentReport = () => {
 
         {/* ── Patient banner ── */}
         {patient && (
-          <div className="ar-patient-bar">
-            <div className="ar-avatar">
-              {(patient.fullName || patient.firstName || 'P').charAt(0).toUpperCase()}
-            </div>
-            <div className="ar-patient-info">
-              <h2 className="ar-patient-name">
+          <div className="ar-patient-bar ar-patient-bar--centered">
+            <div className="ar-patient-info ar-patient-info--centered">
+              <h2 className="ar-patient-name ar-patient-name--centered">
                 {patient.fullName || `${patient.firstName || ''} ${patient.lastName || ''}`.trim()}
               </h2>
-              <div className="ar-patient-meta">
-                {patient.email && <span>{patient.email}</span>}
-                {patient.phone && <span>{patient.phone}</span>}
-                {patient.dateOfBirth && (
-                  <span>DOB: {new Date(patient.dateOfBirth).toLocaleDateString()}</span>
-                )}
-              </div>
+              {patient.dateOfBirth && (
+                <div className="ar-patient-dob">DOB: {new Date(patient.dateOfBirth).toLocaleDateString()}</div>
+              )}
             </div>
           </div>
         )}
@@ -408,7 +401,7 @@ const AssessmentReport = () => {
             {/* ══ PART 1: TABLE SECTIONS ══════════════════════════════════ */}
             {tableSections.length > 0 && (
               <div className="ar-part">
-                <div className="ar-part-label">Assessment data</div>
+                <div className="ar-part-label ar-part-label--centered">Assessment data</div>
                 <div className="ar-table-grid">
                   {tableSections.map((sec, i) => (
                     <SectionCard key={`${sec.title}-${i}`} section={sec} index={i} />
@@ -468,15 +461,17 @@ const SectionCard = ({ section, index }) => {
         <tbody>
           {section.entries.map((e, i) => {
             const cls = getValueClass(e.key, e.value);
-            const isEmpty = !e.value || e.value === '(not provided)';
+            const value = (e.value || '').trim().toLowerCase();
+            // Hide if value is empty, 'not provided', 'no value', 'none', or similar
+            if (!value || value === '(not provided)' || value === 'not provided' || value === 'no value' || value === 'none' || value === 'nothing' || value === '-') return null;
+            let displayValue = e.value;
+            if (cls === 'critical') displayValue = `${e.value} (Critical)`;
+            else if (cls === 'warning') displayValue = `${e.value} (Review)`;
+            else if (cls === 'ok') displayValue = `${e.value} (OK)`;
             return (
               <tr key={`${e.key}-${i}`} className="ar-kv-row">
                 <td className="ar-kv-label">{e.key}</td>
-                <td className={`ar-kv-value ar-kv-value--${cls}`}>
-                  {isEmpty ? <span className="ar-kv-empty">—</span> : e.value}
-                  {cls === 'critical' && <span className="ar-flag ar-flag--crit">critical</span>}
-                  {cls === 'warning'  && <span className="ar-flag ar-flag--warn">review</span>}
-                </td>
+                <td className={`ar-kv-value ar-kv-value--${cls}`}>{displayValue}</td>
               </tr>
             );
           })}

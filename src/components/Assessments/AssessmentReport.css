@@ -1,3 +1,34 @@
+.ar-patient-bar--centered {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: #e3f0fa;
+	border-radius: 12px;
+	margin-bottom: 1.5rem;
+	padding: 2rem 0.5rem 1.5rem 0.5rem;
+	box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.ar-patient-info--centered {
+	text-align: center;
+}
+.ar-patient-name--centered {
+	font-size: 2.1rem;
+	font-weight: 700;
+	margin-bottom: 0.5rem;
+	color: #0a2342;
+}
+.ar-patient-dob {
+	font-size: 1.1rem;
+	color: #2d4a6a;
+	margin-bottom: 0.5rem;
+}
+.ar-part-label--centered {
+	text-align: center;
+	font-size: 1.3rem;
+	font-weight: 600;
+	color: #0a2342;
+	margin-bottom: 1.2rem;
+}
 .ar-container { max-width: 1200px; margin: auto; padding: 1rem; }
 .ar-shell { background: #fff; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
 .ar-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
