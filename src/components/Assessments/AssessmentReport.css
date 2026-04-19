@@ -109,3 +109,74 @@
 .ar-narrative-header { background: #f8f9ff; padding: 0.5rem 1rem; font-weight: bold; }
 .ar-narrative-body { padding: 1rem; }
 .ar-para { margin: 0 0 1rem 0; }
+
+@page {
+	size: landscape;
+	margin: 12mm;
+}
+
+@media print {
+	body {
+		background: #fff;
+	}
+
+	.ar-container {
+		max-width: none;
+		padding: 0;
+	}
+
+	.ar-shell {
+		box-shadow: none;
+		border-radius: 0;
+		padding: 0;
+	}
+
+	.ar-no-print,
+	.ar-btn,
+	.ar-header-actions {
+		display: none !important;
+	}
+
+	.ar-header {
+		margin-bottom: 0.5rem;
+	}
+
+	.ar-patient-bar--centered {
+		box-shadow: none;
+		margin-bottom: 0.75rem;
+		padding: 1rem 0.25rem 0.75rem;
+	}
+
+	.ar-body {
+		gap: 0.75rem;
+	}
+
+	.ar-table-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.6rem;
+		align-items: start;
+	}
+
+	.ar-card,
+	.ar-card--full,
+	.ar-narrative {
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+
+	.ar-card-header,
+	.ar-narrative-header {
+		padding: 0.35rem 0.7rem;
+	}
+
+	.ar-kv-label,
+	.ar-kv-value,
+	.ar-narrative-body {
+		padding: 0.35rem 0.5rem;
+	}
+
+	.ar-part-label,
+	.ar-part-label--centered {
+		margin-bottom: 0.6rem;
+	}
+}
