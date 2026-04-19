@@ -277,6 +277,85 @@ const SECTION_ICONS = {
 const getIcon = (title) => SECTION_ICONS[title] || '◈';
 const formatTitle = (t) => t?.replace('(verbatim)', '').replace('(AI)', '').trim() || '';
 
+const getPatientAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null;
+
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+};
+
+const isMetadataSection = (title) => {
+  const normalized = normalizeSection(title);
+  return (
+    normalized === normalizeSection('Patient & Assessment Metadata') ||
+    normalized === normalizeSection('Patient Identification') ||
+    normalized === normalizeSection('Assessment Metadata')
+  );
+};
+
+const enrichMetadataEntries = (entries, patient) => {
+  if (!Array.isArray(entries)) return [];
+
+  const patientName = patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient';
+  const patientAge = getPatientAge(patient?.dateOfBirth);
+  const nextEntries = [];
+  let hasGender = false;
+  let hasAge = false;
+
+  entries.forEach((entry) => {
+    const key = String(entry?.key || '').trim();
+    const normalizedKey = key.toLowerCase();
+
+    if (normalizedKey === 'patient id') {
+      nextEntries.push({ key: 'Patient Name', value: patientName });
+      if (patient?.gender) {
+        nextEntries.push({ key: 'Gender', value: patient.gender });
+        hasGender = true;
+      }
+      if (patientAge !== null) {
+        nextEntries.push({ key: 'Age', value: String(patientAge) });
+        hasAge = true;
+      }
+      return;
+    }
+
+    if (normalizedKey === 'patient name') {
+      nextEntries.push({ key: 'Patient Name', value: patientName });
+      return;
+    }
+
+    if (normalizedKey === 'gender') hasGender = true;
+    if (normalizedKey === 'age') hasAge = true;
+
+    nextEntries.push(entry);
+  });
+
+  if (!nextEntries.some((entry) => String(entry?.key || '').trim().toLowerCase() === 'patient name')) {
+    nextEntries.unshift({ key: 'Patient Name', value: patientName });
+  }
+
+  if (!hasGender && patient?.gender) {
+    nextEntries.splice(1, 0, { key: 'Gender', value: patient.gender });
+  }
+
+  if (!hasAge && patientAge !== null) {
+    const insertIndex = nextEntries.findIndex((entry) => String(entry?.key || '').trim().toLowerCase() === 'gender');
+    nextEntries.splice(insertIndex >= 0 ? insertIndex + 1 : 1, 0, { key: 'Age', value: String(patientAge) });
+  }
+
+  return nextEntries;
+};
+
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 const AssessmentReport = () => {
   const { id } = useParams();
@@ -404,7 +483,7 @@ const AssessmentReport = () => {
                 <div className="ar-part-label ar-part-label--centered">Assessment data</div>
                 <div className="ar-table-grid">
                   {tableSections.map((sec, i) => (
-                    <SectionCard key={`${sec.title}-${i}`} section={sec} index={i} />
+                    <SectionCard key={`${sec.title}-${i}`} section={sec} index={i} patient={patient} />
                   ))}
                 </div>
               </div>
@@ -448,8 +527,12 @@ const AssessmentReport = () => {
 
 // ─── SECTION CARD ─────────────────────────────────────────────────────────────
 // Renders a kv or diagnoses section as a card with a table inside
-const SectionCard = ({ section, index }) => {
+const SectionCard = ({ section, index, patient }) => {
   if (section.type === 'diagnoses') return <DiagnosesCard section={section} index={index} />;
+
+  const entries = isMetadataSection(section.title)
+    ? enrichMetadataEntries(section.entries, patient)
+    : section.entries;
 
   return (
     <div className="ar-card" style={{ animationDelay: `${index * 40}ms` }}>
@@ -459,7 +542,7 @@ const SectionCard = ({ section, index }) => {
       </div>
       <table className="ar-kv-table">
         <tbody>
-          {section.entries.map((e, i) => {
+          {entries.map((e, i) => {
             const cls = getValueClass(e.key, e.value);
             const value = (e.value || '').trim().toLowerCase();
             // Hide if value is empty, 'not provided', 'no value', 'none', or similar
