@@ -64,6 +64,11 @@ function AppRoutes() {
             <NewAssessmentFormPage />
           </PrivateRoute>
         } />
+        <Route path="/assessments/:id/edit" element={
+          <PrivateRoute>
+            <NewAssessmentFormPage />
+          </PrivateRoute>
+        } />
         <Route path="/assessments/:id/report" element={
           <PrivateRoute>
             <AssessmentReport />

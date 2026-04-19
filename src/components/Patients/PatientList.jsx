@@ -4,10 +4,28 @@ import patientService from '../../services/patientService';
 import assessmentService from '../../services/assessmentService';
 import toast from 'react-hot-toast';
 
+const getPatientAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null;
+
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+};
+
 const PatientList = () => {
   const [patients, setPatients] = useState([]);
   const [filteredPatients, setFilteredPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingPatientId, setDeletingPatientId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -111,6 +129,31 @@ const PatientList = () => {
 
   const handleNewAssessment = (patientId) => {
     navigate(`/assessments/new/form?patientId=${patientId}`);
+  };
+
+  const handleDeletePatient = async (patient) => {
+    const patientId = patient?.id;
+    if (!patientId) return;
+
+    const patientName = patient.fullName || `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'this patient';
+    const confirmed = window.confirm(
+      `Delete ${patientName}? This should also remove all assessments and reports related to this patient from the database.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingPatientId(patientId);
+      await patientService.deletePatient(patientId);
+      setPatients((prev) => (prev || []).filter((entry) => entry?.id !== patientId));
+      setFilteredPatients((prev) => (prev || []).filter((entry) => entry?.id !== patientId));
+      toast.success('Patient deleted');
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      toast.error('Failed to delete patient');
+    } finally {
+      setDeletingPatientId(null);
+    }
   };
 
   const clearSearch = () => {
@@ -222,6 +265,7 @@ const PatientList = () => {
             const patientName = patient.fullName || `${patient.firstName} ${patient.lastName}` || patient.name || 'Unnamed Patient';
             const initials = getInitials(patientName);
             const assessmentCount = patient.assessmentCount || 0;
+            const patientAge = getPatientAge(patient.dateOfBirth);
             
             return (
               <div key={patient.id} className="patient-card">
@@ -242,9 +286,14 @@ const PatientList = () => {
                       </p>
                     )}
                     {patient.dateOfBirth && (
-                      <p className="patient-detail">
-                        <span className="detail-icon">🎂</span> {new Date(patient.dateOfBirth).toLocaleDateString()}
-                      </p>
+                      <div>
+                        <p className="patient-detail">
+                          <span className="detail-icon">🎂</span> {new Date(patient.dateOfBirth).toLocaleDateString()}
+                        </p>
+                        {patientAge !== null && (
+                          <p className="patient-age">Age: {patientAge}</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -266,20 +315,30 @@ const PatientList = () => {
                   <button
                     onClick={() => handleViewPatient(patient.id)}
                     className="btn-view"
+                    disabled={deletingPatientId === patient.id}
                   >
                     View Details
                   </button>
                   <button
                     onClick={() => handleViewHistory(patient.id)}
                     className="btn-history"
+                    disabled={deletingPatientId === patient.id}
                   >
                     View History
                   </button>
                   <button
                     onClick={() => handleNewAssessment(patient.id)}
                     className="btn-assess"
+                    disabled={deletingPatientId === patient.id}
                   >
                     New Assessment
+                  </button>
+                  <button
+                    onClick={() => handleDeletePatient(patient)}
+                    className="btn-delete-patient"
+                    disabled={deletingPatientId === patient.id}
+                  >
+                    {deletingPatientId === patient.id ? 'Deleting...' : 'Delete Patient'}
                   </button>
                 </div>
               </div>
@@ -516,6 +575,13 @@ const PatientList = () => {
           font-size: 0.875rem;
         }
 
+        .patient-age {
+          margin: 0.2rem 0 0 1.4rem;
+          font-size: 0.8rem;
+          color: #7f8c8d;
+          font-weight: 600;
+        }
+
         .patient-card-stats {
           display: flex;
           gap: 1.5rem;
@@ -545,11 +611,12 @@ const PatientList = () => {
         }
 
         .patient-card-actions {
-          display: flex;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
           gap: 0.75rem;
         }
 
-        .btn-view, .btn-history, .btn-assess {
+        .btn-view, .btn-history, .btn-assess, .btn-delete-patient {
           flex: 1;
           padding: 0.6rem;
           border: none;
@@ -573,6 +640,19 @@ const PatientList = () => {
         .btn-assess {
           background-color: #27ae60;
           color: white;
+        }
+
+        .btn-delete-patient {
+          background-color: #c0392b;
+          color: white;
+        }
+
+        .btn-view:disabled,
+        .btn-history:disabled,
+        .btn-assess:disabled,
+        .btn-delete-patient:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
 
         .btn-primary {

@@ -62,12 +62,12 @@ const patientService = {
   // Update patient
   async updatePatient(id, patientData) {
     const response = await api.put(`/Patients/${id}`, {
-      firstName: patientData.firstName,
-      lastName: patientData.lastName,
-      dateOfBirth: patientData.dateOfBirth,
-      gender: patientData.gender,
-      phoneNumber: patientData.phoneNumber,
-      address: patientData.address
+      firstName: toRequiredTrimmedString(patientData.firstName),
+      lastName: toRequiredTrimmedString(patientData.lastName),
+      dateOfBirth: toDateTimeString(patientData.dateOfBirth),
+      gender: toRequiredTrimmedString(patientData.gender),
+      phoneNumber: toNullableTrimmedString(patientData.phoneNumber),
+      address: toNullableTrimmedString(patientData.address)
     });
     return response.data;
   },

@@ -1,44 +1,82 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentForm from './AssessmentForm';
+import assessmentService from '../../services/assessmentService';
+import patientService from '../../services/patientService';
 
 const NewAssessmentFormPage = () => {
   const navigate = useNavigate();
+  const { id: assessmentId } = useParams();
   const [searchParams] = useSearchParams();
   const [patient, setPatient] = useState(null);
+  const [assessment, setAssessment] = useState(null);
   const [loadingPatient, setLoadingPatient] = useState(true);
 
   const patientId = searchParams.get('patientId') || '';
+  const isEditMode = Boolean(assessmentId);
 
-  const normalizedPatientId = useMemo(() => patientId.trim(), [patientId]);
+  const normalizedPatientId = useMemo(() => {
+    if (isEditMode) {
+      return String(assessment?.patientId || assessment?.patient?.id || '').trim();
+    }
+    return patientId.trim();
+  }, [assessment, isEditMode, patientId]);
 
   useEffect(() => {
-    if (!normalizedPatientId) {
-      toast.error('Missing patient information. Please start from a patient.');
-      navigate('/patients');
-    } else {
-      loadPatient();
-    }
-  }, [navigate, normalizedPatientId]);
+    const loadData = async () => {
+      try {
+        setLoadingPatient(true);
 
-  const loadPatient = async () => {
-    try {
-      setLoadingPatient(true);
-      // Import patient service dynamically or add import at top
-      const patientService = (await import('../../services/patientService')).default;
-      const patientData = await patientService.getPatientById(normalizedPatientId);
-      setPatient(patientData);
-    } catch (error) {
-      console.error('Error loading patient:', error);
-      toast.error('Failed to load patient information');
-      navigate('/patients');
-    } finally {
-      setLoadingPatient(false);
-    }
+        if (isEditMode) {
+          const assessmentData = await assessmentService.getAssessmentById(assessmentId);
+          setAssessment(assessmentData);
+
+          const resolvedPatientId = String(assessmentData?.patientId || assessmentData?.patient?.id || '').trim();
+          if (!resolvedPatientId) {
+            toast.error('Assessment is missing patient information');
+            navigate('/patients');
+            return;
+          }
+
+          const patientData = await patientService.getPatientById(resolvedPatientId);
+          setPatient(patientData);
+          return;
+        }
+
+        if (!normalizedPatientId) {
+          toast.error('Missing patient information. Please start from a patient.');
+          navigate('/patients');
+          return;
+        }
+
+        const patientData = await patientService.getPatientById(normalizedPatientId);
+        setPatient(patientData);
+      } catch (error) {
+        console.error('Error loading assessment form context:', error);
+        toast.error(isEditMode ? 'Failed to load assessment' : 'Failed to load patient information');
+        navigate('/patients');
+      } finally {
+        setLoadingPatient(false);
+      }
+    };
+
+    loadData();
+  }, [assessmentId, isEditMode, navigate, normalizedPatientId]);
+
+  const handleSuccess = () => {
+    toast.success(isEditMode ? 'Assessment updated' : 'Assessment created');
+    navigate(`/patients/${normalizedPatientId}/history`);
   };
 
-  if (!normalizedPatientId) return null;
+  const headingTitle = isEditMode ? 'Edit Clinical Assessment' : 'New Clinical Assessment';
+  const headingSubtitle = isEditMode
+    ? 'Update patient examination and regenerate the report'
+    : 'Document patient examination and clinical findings';
+
+  if (!isEditMode && !normalizedPatientId) {
+    return null;
+  }
 
   if (loadingPatient) {
     return (
@@ -46,7 +84,7 @@ const NewAssessmentFormPage = () => {
         <div style={styles.container}>
           <div style={styles.loadingCard}>
             <div style={styles.spinner}></div>
-            <p style={styles.loadingText}>Loading patient information...</p>
+            <p style={styles.loadingText}>{isEditMode ? 'Loading assessment...' : 'Loading patient information...'}</p>
           </div>
         </div>
       </div>
@@ -56,17 +94,15 @@ const NewAssessmentFormPage = () => {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        {/* Hero Section */}
         <div style={styles.heroSection}>
           <div style={styles.heroContent}>
             <div style={styles.heroIcon}>📝</div>
             <div>
-              <h1 style={styles.heroTitle}>New Clinical Assessment</h1>
-              <p style={styles.heroSubtitle}>Document patient examination and clinical findings</p>
+              <h1 style={styles.heroTitle}>{headingTitle}</h1>
+              <p style={styles.heroSubtitle}>{headingSubtitle}</p>
             </div>
           </div>
 
-          {/* Patient Summary Card */}
           {patient && (
             <div style={styles.patientSummary}>
               <div style={styles.patientAvatar}>
@@ -104,9 +140,13 @@ const NewAssessmentFormPage = () => {
           )}
         </div>
 
-        {/* Assessment Form Container */}
         <div style={styles.formContainer}>
-            <AssessmentForm patientId={normalizedPatientId} />
+          <AssessmentForm
+            patientId={normalizedPatientId}
+            assessmentId={assessmentId || null}
+            initialData={assessment}
+            onSuccess={handleSuccess}
+          />
         </div>
       </div>
     </div>

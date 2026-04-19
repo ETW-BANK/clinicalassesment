@@ -20,6 +20,23 @@ const formatDateTime = (dateString) => {
   return Number.isNaN(d.getTime()) ? String(dateString) : d.toLocaleString();
 };
 
+const getPatientAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null;
+
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+};
+
 const formatDateKey = (dateKey) => {
   if (!dateKey) return 'N/A';
   const [yyyy, mm, dd] = String(dateKey).split('-');
@@ -41,6 +58,7 @@ const PatientHistory = () => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
 
@@ -81,25 +99,15 @@ const PatientHistory = () => {
   }, [id]);
 
   const rows = useMemo(() => {
-    const byDate = new Map();
-    (assessments || []).forEach((a) => {
-      const key =
-        getDateKey(a?.assessmentDate) ||
-        getDateKey(a?.createdAt) ||
-        getDateKey(a?.dateCreated) ||
-        'unknown';
-      const existing = byDate.get(key);
-      if (!existing) {
-        byDate.set(key, a);
-        return;
-      }
-      const existingTime = new Date(existing?.assessmentDate || existing?.createdAt || existing?.dateCreated || 0).getTime();
-      const currentTime = new Date(a?.assessmentDate || a?.createdAt || a?.dateCreated || 0).getTime();
-      if (currentTime > existingTime) byDate.set(key, a);
-    });
-
-    return Array.from(byDate.entries())
-      .map(([dateKey, assessment]) => ({ dateKey, assessment }))
+    return (assessments || [])
+      .map((assessment) => ({
+        dateKey:
+          getDateKey(assessment?.assessmentDate) ||
+          getDateKey(assessment?.createdAt) ||
+          getDateKey(assessment?.dateCreated) ||
+          'unknown',
+        assessment,
+      }))
       .sort((a, b) => {
         const at = new Date(a.assessment?.assessmentDate || a.assessment?.createdAt || a.assessment?.dateCreated || 0).getTime();
         const bt = new Date(b.assessment?.assessmentDate || b.assessment?.createdAt || b.assessment?.dateCreated || 0).getTime();
@@ -195,6 +203,36 @@ const PatientHistory = () => {
     }
   };
 
+  const handleDeleteAssessment = async (assessmentId) => {
+    if (!assessmentId) return;
+    const confirmed = window.confirm('Delete this assessment and its generated report?');
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(assessmentId);
+      await assessmentService.deleteAssessment(assessmentId);
+
+      const normalizedDeletedId = String(assessmentId).toLowerCase();
+
+      setAssessments((prev) =>
+        (prev || []).filter((a) => {
+          const currentId = String(a?.assessmentId || a?.id || '').toLowerCase();
+          return currentId !== normalizedDeletedId;
+        })
+      );
+
+      const refreshedAssessments = await assessmentService.getAssessmentsByPatientId(id);
+      setAssessments(Array.isArray(refreshedAssessments) ? refreshedAssessments : []);
+
+      toast.success('Assessment deleted');
+    } catch (error) {
+      console.error('Failed to delete assessment:', error);
+      toast.error('Failed to delete assessment');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div style={styles.container}>
@@ -219,6 +257,8 @@ const PatientHistory = () => {
     );
   }
 
+  const patientAge = getPatientAge(patient.dateOfBirth);
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -235,6 +275,7 @@ const PatientHistory = () => {
           {patient.dateOfBirth && (
             <span><strong>DOB:</strong> {new Date(patient.dateOfBirth).toLocaleDateString()}</span>
           )}
+          {patientAge !== null && <span><strong>Age:</strong> {patientAge}</span>}
           {patient.gender && <span><strong>Gender:</strong> {patient.gender}</span>}
           {patient.phoneNumber && <span><strong>Phone:</strong> {patient.phoneNumber}</span>}
           {patient.address && <span><strong>Address:</strong> {patient.address}</span>}
@@ -291,46 +332,74 @@ const PatientHistory = () => {
               <thead>
                 <tr>
                   <th style={styles.th}>Date</th>
-                  <th style={styles.th}>Vitals</th>
-                  <th style={styles.th}>Skin</th>
-                  <th style={styles.th}>Mobility</th>
-                  <th style={styles.th}>Report</th>
+                  <th style={styles.th}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.map(({ dateKey, assessment }) => {
                   const assessmentId = assessment?.assessmentId || assessment?.id;
-                  const saved = hasSavedReport(assessment);
+                  const rowKey = String(assessmentId || `${dateKey}-${assessment?.assessmentDate || assessment?.createdAt || assessment?.dateCreated || 'unknown'}`);
                   return (
-                    <tr key={dateKey} style={styles.tr}>
+                    <tr key={rowKey} style={styles.tr}>
                       <td style={styles.td}>
-                        <div style={{ fontWeight: 600 }}>{formatDateKey(dateKey)}</div>
-                        <div style={styles.smallText}>{formatDateTime(assessment?.assessmentDate || assessment?.createdAt || assessment?.dateCreated)}</div>
+                        <div style={{ fontWeight: 600 }}>
+                          {formatDateTime(assessment?.assessmentDate || assessment?.createdAt || assessment?.dateCreated)}
+                        </div>
                       </td>
-                      <td style={styles.td}>{getVitalsSummary(assessment)}</td>
-                      <td style={styles.td}>{getSkinSummary(assessment)}</td>
-                      <td style={styles.td}>{getMobilitySummary(assessment)}</td>
                       <td style={styles.td}>
-                        {saved ? (
+                        <div style={styles.actionGroup}>
+                          {hasSavedReport(assessment) ? (
+                            <button
+                              style={styles.viewReportButton}
+                              onClick={() => navigate(`/assessments/${assessmentId}/report`)}
+                              disabled={!assessmentId}
+                            >
+                              View Report
+                            </button>
+                          ) : (
+                            <button
+                              style={{
+                                ...styles.generateReportButton,
+                                ...(generatingId === assessmentId ? styles.disabledButton : null),
+                              }}
+                              onClick={() => handleGenerateReport(assessment)}
+                              disabled={!assessmentId || generatingId === assessmentId}
+                            >
+                              {generatingId === assessmentId ? 'Generating...' : 'Generate Report'}
+                            </button>
+                          )}
+
                           <button
-                            style={styles.viewReportButton}
-                            onClick={() => navigate(`/assessments/${assessmentId}/report`)}
-                            disabled={!assessmentId}
-                          >
-                            View report
-                          </button>
-                        ) : (
-                          <button
-                            style={{
-                              ...styles.generateReportButton,
-                              ...(generatingId === assessmentId ? styles.disabledButton : null),
-                            }}
+                            style={styles.secondaryActionButton}
                             onClick={() => handleGenerateReport(assessment)}
                             disabled={!assessmentId || generatingId === assessmentId}
                           >
-                            {generatingId === assessmentId ? 'Generating...' : 'Generate report'}
+                            {generatingId === assessmentId ? 'Generating...' : 'Regenerate Report'}
                           </button>
-                        )}
+
+                          <button
+                            style={styles.secondaryActionButton}
+                            onClick={() => navigate(`/assessments/${assessmentId}/edit`)}
+                            disabled={!assessmentId}
+                          >
+                            Edit Assessment
+                          </button>
+
+                          <button
+                            style={styles.secondaryActionButton}
+                            onClick={() => navigate(`/patients/${id}`)}
+                          >
+                            Patient Details
+                          </button>
+
+                          <button
+                            style={styles.dangerActionButton}
+                            onClick={() => handleDeleteAssessment(assessmentId)}
+                            disabled={!assessmentId || deletingId === assessmentId}
+                          >
+                            {deletingId === assessmentId ? 'Deleting...' : 'Delete Assessment'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -354,7 +423,7 @@ const styles = {
   },
   header: {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     marginBottom: '2rem',
   },
@@ -482,6 +551,24 @@ const styles = {
     cursor: 'pointer',
     fontWeight: 600,
   },
+  secondaryActionButton: {
+    padding: '0.6rem 1rem',
+    background: '#f4f6fb',
+    color: '#2c3e50',
+    border: '1px solid #d6dcef',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
+  dangerActionButton: {
+    padding: '0.6rem 1rem',
+    background: '#fff1f0',
+    color: '#c0392b',
+    border: '1px solid #f5b7b1',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
   viewReportButton: {
     padding: '0.6rem 1rem',
     background: 'linear-gradient(135deg, #27ae60, #2ecc71)',
@@ -490,6 +577,11 @@ const styles = {
     borderRadius: '10px',
     cursor: 'pointer',
     fontWeight: 600,
+  },
+  actionGroup: {
+    display: 'flex',
+    gap: '0.5rem',
+    flexWrap: 'wrap',
   },
   disabledButton: {
     opacity: 0.7,
